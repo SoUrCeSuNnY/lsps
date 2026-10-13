@@ -1,0 +1,12 @@
+{
+  "name": "lsps-plugin-sat-trak",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Isolated GPL plugin (satellite.js) — NOT part of the root npm workspace",
+  "license": "SEE LICENSE IN LICENSE-NOTES.md",
+  "type": "module",
+  "scripts": {
+    "start": "node src/server.mjs"
+  },
+  "dependencies": {}
+}

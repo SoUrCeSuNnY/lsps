@@ -1,0 +1,24 @@
+{
+  "name": "lsps",
+  "private": true,
+  "version": "0.1.0",
+  "description": "3D 取景器：联网高精度 3D 地图 + 时间光照/天气/星空模拟 + 相机取景器预演 (3D location scouting viewfinder)",
+  "license": "MIT",
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "scripts": {
+    "dev": "npm run dev -w @lsps/web",
+    "build": "npm run build -w @lsps/core && npm run build -w @lsps/web",
+    "test": "npm run test -w @lsps/core",
+    "check:licenses": "node scripts/check-licenses.mjs",
+    "fetch:assets": "node scripts/fetch-assets.mjs"
+  },
+  "engines": {
+    "node": ">=20.19"
+  },
+  "allowScripts": {
+    "esbuild": true
+  }
+}

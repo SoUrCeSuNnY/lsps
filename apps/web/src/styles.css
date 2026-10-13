@@ -1,0 +1,82 @@
+:root {
+  color-scheme: dark;
+  --bg: #0d1117;
+  --panel: #141a23;
+  --line: #26303f;
+  --txt: #d7e0ea;
+  --dim: #8395a7;
+  --acc: #f2b84b;
+  font-family: 'Segoe UI', 'Microsoft YaHei', system-ui, sans-serif;
+}
+* { box-sizing: border-box; }
+html, body, #root { height: 100%; margin: 0; }
+body { background: var(--bg); color: var(--txt); overflow: hidden; }
+
+.app { display: flex; height: 100%; }
+.side {
+  width: 350px; min-width: 350px; height: 100%; overflow-y: auto;
+  background: var(--panel); border-right: 1px solid var(--line);
+  padding: 12px 14px; font-size: 13px;
+}
+.side h1 { font-size: 18px; margin: 2px 0 10px; }
+.side h1 span { color: var(--acc); font-size: 12px; margin-left: 6px; font-weight: normal; }
+.stage { flex: 1; position: relative; }
+.cesium { position: absolute; inset: 0; }
+
+.sec { border-top: 1px solid var(--line); padding: 10px 0; }
+.sec-t { color: var(--acc); font-size: 12px; letter-spacing: 2px; margin-bottom: 8px; }
+.hint { color: var(--dim); font-size: 11px; margin-top: 6px; }
+.row { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.grow { flex: 1; min-width: 60px; }
+.lb { color: var(--dim); font-size: 12px; }
+.num { font-variant-numeric: tabular-nums; color: var(--txt); font-size: 12px; min-width: 44px; }
+
+input, select, button {
+  background: #0f141c; color: var(--txt); border: 1px solid var(--line);
+  border-radius: 6px; padding: 5px 8px; font-size: 12px;
+}
+button { cursor: pointer; }
+button:hover { border-color: var(--acc); }
+button.on { border-color: var(--acc); color: var(--acc); }
+button.chip { padding: 2px 7px; font-size: 11px; }
+button.shot { background: #233041; }
+input[type='range'] { accent-color: var(--acc); padding: 0; }
+input[type='checkbox'], input[type='radio'] { accent-color: var(--acc); }
+.cb { display: inline-flex; gap: 3px; align-items: center; font-size: 12px; color: var(--txt); }
+.res { display: block; width: 100%; text-align: left; margin-top: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+input:disabled, select:disabled { opacity: 0.4; }
+
+.astro { border-top: 1px solid var(--line); padding: 10px 0; }
+.astro table { width: 100%; border-collapse: collapse; font-size: 12px; }
+.astro td { padding: 3px 4px; border-bottom: 1px dashed #1d2632; }
+.astro td:first-child { color: var(--dim); width: 44%; }
+.foot { color: var(--dim); font-size: 10.5px; line-height: 1.6; padding: 10px 0 30px; border-top: 1px solid var(--line); margin-top: 10px; }
+.foot a { color: var(--acc); text-decoration: none; }
+.loading {
+  position: absolute; inset: 0; display: grid; place-items: center;
+  color: var(--acc); background: rgba(13, 17, 23, 0.6); z-index: 5; font-size: 14px;
+}
+
+/* viewfinder */
+.vf-root { position: absolute; inset: 0; display: grid; place-items: center; pointer-events: none; z-index: 4; overflow: hidden; }
+.vf-box {
+  position: relative; width: 100%; max-height: 100%; max-width: 100%;
+  box-shadow: 0 0 0 100vmax rgba(0, 0, 0, 0.92);
+  outline: 1px solid rgba(255, 255, 255, 0.35);
+}
+.vf-grid { position: absolute; inset: 0; }
+.vf-safe { position: absolute; inset: 4%; border: 1px dashed rgba(127, 209, 174, 0.6); }
+.vf-cross { position: absolute; left: 50%; top: 50%; width: 22px; height: 22px; transform: translate(-50%, -50%); }
+.vf-cross::before, .vf-cross::after { content: ''; position: absolute; background: rgba(255, 255, 255, 0.75); }
+.vf-cross::before { left: 0; top: 50%; width: 100%; height: 1px; }
+.vf-cross::after { top: 0; left: 50%; height: 100%; width: 1px; }
+.vf-tl, .vf-tr, .vf-bl, .vf-br { position: absolute; font: 11px/1.5 monospace; color: rgba(255, 255, 255, 0.9); text-shadow: 0 1px 2px #000; padding: 6px 8px; }
+.vf-tl { left: 0; top: 0; }
+.vf-tr { right: 0; top: 0; text-align: right; }
+.vf-bl { left: 0; bottom: 0; }
+.vf-br { right: 0; bottom: 0; text-align: right; }
+.vf-level { position: absolute; left: 50%; bottom: 26px; transform: translateX(-50%); width: 120px; height: 12px; overflow: hidden; border-left: 1px solid rgba(255,255,255,.4); border-right: 1px solid rgba(255,255,255,.4); }
+.vf-level span { position: absolute; left: -20px; right: -20px; top: 5px; border-top: 1px solid rgba(255, 200, 80, 0.9); display: block; }
+.vf-level.ok span { border-top-color: #7fd1ae; }
+
+.cesium-widget-credits { font-size: 10px !important; color: #cfd8e3 !important; }
