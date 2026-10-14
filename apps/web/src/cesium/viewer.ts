@@ -11,6 +11,7 @@ export async function createViewer(container: HTMLElement, o: ViewerOpts): Promi
   const base = await makeImagery(o.basemap, o);
   const terrain = await makeTerrain(o.ionToken);
   const viewer = new Cesium.Viewer(container, {
+    defaultView: false, // suppress Cesium's built-in US intro flight (it overrides our scene camera)
     baseLayer: Cesium.ImageryLayer.fromProviderAsync(Promise.resolve(base)),
     terrain,
     baseLayerPicker: false,

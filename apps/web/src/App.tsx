@@ -135,14 +135,13 @@ export default function App() {
       pathRef.current = new SunPath(v);
       v.clock.currentTime = Cesium.JulianDate.fromDate(new Date(sRef.current.dateStr + 'Z'));
       v.clock.shouldAnimate = false;
-      v.camera.flyTo({
+      v.camera.setView({
         destination: Cesium.Cartesian3.fromDegrees(HYD_VIEW.lon, HYD_VIEW.lat, HYD_VIEW.alt),
         orientation: {
           heading: Cesium.Math.toRadians(HYD_VIEW.heading),
           pitch: Cesium.Math.toRadians(HYD_VIEW.pitch),
           roll: 0,
         },
-        duration: 0,
       });
       setReady(true);
       loadPackedBuildings(v, '/data/hongyadong.json')
