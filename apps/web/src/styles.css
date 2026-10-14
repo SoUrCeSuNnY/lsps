@@ -80,3 +80,28 @@ input:disabled, select:disabled { opacity: 0.4; }
 .vf-level.ok span { border-top-color: #7fd1ae; }
 
 .cesium-widget-credits { font-size: 10px !important; color: #cfd8e3 !important; }
+
+/* settings modal */
+.gear { float: right; margin-top: 2px; }
+.modal-mask {
+  position: fixed; inset: 0; z-index: 50; background: rgba(0,0,0,.6);
+  display: grid; place-items: center; backdrop-filter: blur(2px);
+}
+.modal {
+  width: 460px; max-width: 92vw; max-height: 86vh; overflow-y: auto;
+  background: var(--panel); border: 1px solid var(--line); border-radius: 12px;
+  padding: 16px 18px; box-shadow: 0 20px 60px rgba(0,0,0,.5);
+}
+.modal-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+.modal-head h2 { margin: 0; font-size: 15px; color: var(--acc); }
+.field { margin: 14px 0; }
+.field > label { display: block; font-size: 12px; color: var(--txt); margin-bottom: 5px; }
+.field input { width: 100%; }
+.row2 { display: flex; gap: 6px; }
+.row2 input { flex: 1; }
+.testres { font-size: 12px; margin-top: 5px; color: #7fd1ae; }
+.note { font-size: 11px; color: var(--dim); margin-top: 5px; line-height: 1.5; }
+.note a { color: var(--acc); text-decoration: none; }
+.privacy { border-top: 1px dashed var(--line); padding-top: 8px; margin-top: 14px; }
+.modal-foot { display: flex; gap: 8px; margin-top: 12px; }
+button.primary { background: #2a3a4e; border-color: var(--acc); color: var(--acc); }

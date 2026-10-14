@@ -19,13 +19,12 @@ import { skyInfo } from './lib/astro';
 import { fetchCurrent, precipIntensity, skyKind, WEATHER_LABELS } from './lib/weather';
 import { searchPlaces } from './lib/search';
 import { captureFrame, download } from './lib/capture';
+import { AppKeys, loadKeys } from './lib/keyStore';
 import { Panels, Readout, Settings } from './ui/Panels';
 import { Viewfinder } from './ui/Viewfinder';
+import { SettingsModal } from './ui/SettingsModal';
 
-const env = import.meta.env;
-const ION = env.VITE_CESIUM_ION_TOKEN ?? '';
-const TDT = env.VITE_TDT_KEY ?? '';
-const NOMINATIM = env.VITE_NOMINATIM_URL ?? 'https://nominatim.openstreetmap.org';
+const keysRef0 = loadKeys();
 
 function pad(n: number): string {
   return String(n).padStart(2, '0');
@@ -39,7 +38,7 @@ const initial: Settings = {
   dateStr: toInputValue(new Date(Math.floor(now.getTime() / 60000) * 60000)),
   playing: false,
   speed: 300,
-  basemap: TDT ? 'tdt-img' : 'osm',
+  basemap: keysRef0.tdtKey ? 'tdt-img' : 'osm',
   sensorId: 'ff',
   focal: 35,
   aperture: 2.8,
@@ -76,6 +75,7 @@ export default function App() {
   const starRef = useRef<StarField | null>(null);
   const pathRef = useRef<SunPath | null>(null);
   const sRef = useRef<Settings>(initial);
+  const keysRef = useRef<AppKeys>(keysRef0);
   const observerRef = useRef({ lat: 39.9, lon: 116.4 });
   const skyRef = useRef<ReturnType<typeof skyInfo> | null>(null);
   const readoutRef = useRef<Readout>(initialReadout);
@@ -84,6 +84,8 @@ export default function App() {
   const [r, setR] = useState<Readout>(initialReadout);
   const [results, setResults] = useState<{ name: string; lat: number; lon: number; source: string }[]>([]);
   const [ready, setReady] = useState(false);
+  const [keys, setKeys] = useState<AppKeys>(keysRef0);
+  const [showSettings, setShowSettings] = useState(false);
 
   const set = (patch: Partial<Settings>) => {
     sRef.current = { ...sRef.current, ...patch };
@@ -96,8 +98,8 @@ export default function App() {
     if (viewerRef.current) return; // StrictMode double-mount guard: keep the first viewer
     (async () => {
       const v = await createViewer(hostRef.current!, {
-        ionToken: ION,
-        tdtKey: TDT,
+        ionToken: keysRef.current.ionToken,
+        tdtKey: keysRef.current.tdtKey,
         basemap: sRef.current.basemap,
       });
       if (disposed) return;
@@ -200,7 +202,7 @@ export default function App() {
     const v = viewerRef.current;
     if (!v || basemapRef.current === s.basemap) return;
     basemapRef.current = s.basemap;
-    swapBasemap(v, s.basemap, ION, TDT).catch((e) => console.warn(e));
+    swapBasemap(v, s.basemap, keysRef.current.ionToken, keysRef.current.tdtKey).catch((e) => console.warn(e));
   }, [s.basemap, ready]);
 
   // weather apply
@@ -247,8 +249,27 @@ export default function App() {
   }, [s.weatherMode, Math.round(r.lat * 100), Math.round(r.lon * 100)]);
 
   const onSearch = async (q: string) => {
-    const res = await searchPlaces(q, NOMINATIM, TDT);
+    const res = await searchPlaces(q, keysRef.current.nominatimUrl, keysRef.current.tdtKey);
     setResults(res);
+  };
+
+  const onKeysSaved = (k: AppKeys) => {
+    keysRef.current = k;
+    setKeys(k);
+    const v = viewerRef.current;
+    if (!v) return;
+    if (k.ionToken) Cesium.Ion.defaultAccessToken = k.ionToken;
+    try {
+      v.scene.setTerrain(
+        k.ionToken
+          ? new Cesium.Terrain(Cesium.CesiumTerrainProvider.fromIonAssetId(1, { requestVertexNormals: true }))
+          : new Cesium.Terrain(Promise.resolve(new Cesium.EllipsoidTerrainProvider())),
+      );
+    } catch (e) {
+      console.warn('terrain switch failed', e);
+    }
+    basemapRef.current = sRef.current.basemap;
+    swapBasemap(v, sRef.current.basemap, k.ionToken, k.tdtKey).catch((e) => console.warn(e));
   };
 
   const onPick = (p: { lat: number; lon: number }) => {
@@ -277,7 +298,16 @@ export default function App() {
   return (
     <div className="app">
       <aside className="side">
-        <h1>LSPS <span>3D 取景器</span></h1>
+        <h1>
+          LSPS <span>3D 取景器</span>
+          <button
+            className="gear"
+            title={`密钥设置 — ion:${keys.ionToken ? '✓' : '未配置'} 天地图:${keys.tdtKey ? '✓' : '未配置'}`}
+            onClick={() => setShowSettings(true)}
+          >
+            ⚙ 设置
+          </button>
+        </h1>
         <Panels
           s={s}
           r={r}
@@ -292,7 +322,7 @@ export default function App() {
             sunset: skyRef.current?.sunset ?? null,
             twilightEvening: skyRef.current?.twilightEvening ?? null,
           }}
-          hasKeys={{ ion: !!ION, tdt: !!TDT }}
+          hasKeys={{ ion: !!keys.ionToken, tdt: !!keys.tdtKey }}
         />
         <div className="astro">
           <div className="sec-t">天文数据</div>
@@ -318,6 +348,7 @@ export default function App() {
         <Viewfinder s={s} r={r} />
         {!ready && <div className="loading">地球加载中…</div>}
       </main>
+      <SettingsModal open={showSettings} onClose={() => setShowSettings(false)} onSaved={onKeysSaved} />
     </div>
   );
 }

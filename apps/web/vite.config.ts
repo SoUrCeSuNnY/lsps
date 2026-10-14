@@ -70,7 +70,6 @@ export default defineConfig({
     serveCesium(),
     react(),
     viteStaticCopy({
-      apply: 'build',
       targets: [
         { src: 'node_modules/cesium/Build/Cesium/Workers', dest: 'cesium' },
         { src: 'node_modules/cesium/Build/Cesium/ThirdParty', dest: 'cesium' },

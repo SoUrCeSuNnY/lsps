@@ -13,3 +13,5 @@ shot*.png
 scripts/cdp-*.mjs
 scripts/probe-deps.cjs
 shot.bat
+
+settings.png
