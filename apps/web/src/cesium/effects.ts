@@ -16,6 +16,7 @@ void main() {
 const RAIN_FRAG = `
 uniform sampler2D colorTexture;
 uniform float intensity;
+uniform float time;
 in vec2 v_textureCoordinates;
 float hash12(vec2 p){ vec3 p3 = fract(vec3(p.xyx) * 0.1031); p3 += dot(p3, p3.yzx + 33.33); return fract((p3.x + p3.y) * p3.z); }
 void main() {
@@ -26,7 +27,7 @@ void main() {
   vec2 f = fract(uv * g);
   float r = hash12(cell);
   float speed = 2.5 + r * 3.5;
-  f.y = fract(f.y + czm_time.y * speed * 0.02);
+  f.y = fract(f.y + time * speed * 0.02);
   f.x = fract(f.x + r);
   float streak = smoothstep(0.10, 0.0, abs(f.x - 0.5) + 0.06 * abs(f.y - 0.5))
                * smoothstep(0.0, 0.15, f.y) * smoothstep(1.0, 0.45, f.y);
@@ -38,12 +39,13 @@ void main() {
 const SNOW_FRAG = `
 uniform sampler2D colorTexture;
 uniform float intensity;
+uniform float time;
 in vec2 v_textureCoordinates;
 float hash12(vec2 p){ vec3 p3 = fract(vec3(p.xyx) * 0.1031); p3 += dot(p3, p3.yzx + 33.33); return fract((p3.x + p3.y) * p3.z); }
 void main() {
   vec4 color = texture(colorTexture, v_textureCoordinates);
   vec2 uv = v_textureCoordinates;
-  float t = czm_time.y;
+  float t = time;
   float a = 0.0;
   for (int i = 0; i < 3; i++) {
     float fi = float(i);
@@ -100,11 +102,11 @@ export class Effects {
       }),
       rain: stage(s, {
         fragmentShader: RAIN_FRAG,
-        uniforms: { intensity: () => this.u.rain },
+        uniforms: { intensity: () => this.u.rain, time: () => Cesium.JulianDate.totalDays(viewer.clock.currentTime) * 86400 },
       }),
       snow: stage(s, {
         fragmentShader: SNOW_FRAG,
-        uniforms: { intensity: () => this.u.snow },
+        uniforms: { intensity: () => this.u.snow, time: () => Cesium.JulianDate.totalDays(viewer.clock.currentTime) * 86400 },
       }),
       fog: stage(s, {
         fragmentShader: FOG_FRAG,

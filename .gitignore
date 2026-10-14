@@ -15,3 +15,5 @@ scripts/probe-deps.cjs
 shot.bat
 
 settings.png
+
+watchdog.log

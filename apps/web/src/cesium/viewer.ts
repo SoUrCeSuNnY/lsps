@@ -11,7 +11,6 @@ export async function createViewer(container: HTMLElement, o: ViewerOpts): Promi
   const base = await makeImagery(o.basemap, o);
   const terrain = await makeTerrain(o.ionToken);
   const viewer = new Cesium.Viewer(container, {
-    defaultView: false, // suppress Cesium's built-in US intro flight (it overrides our scene camera)
     baseLayer: Cesium.ImageryLayer.fromProviderAsync(Promise.resolve(base)),
     terrain,
     baseLayerPicker: false,
@@ -41,8 +40,29 @@ export async function createViewer(container: HTMLElement, o: ViewerOpts): Promi
     sm.softShadows = true; // PCSS: kills the frame-to-frame hard-edge shadow flicker during time-lapse
   }
   viewer.scene.screenSpaceCameraController.maximumZoomDistance = 4e7;
+  // One transient render error (observed: one frame while OSM buildings' first
+  // extrusion upload) must not show Cesium's modal or stop the loop: swallow the
+  // panel and keep rendering — CesiumWidget resumes on the next rAF.
+  const widget = viewer.cesiumWidget as unknown as { showErrorPanel(): void };
+  widget.showErrorPanel = () => {};
+  let renderErrors = 0;
+  scene.renderError.addEventListener(() => {
+    renderErrors++;
+    console.warn(`Cesium transient render error #${renderErrors} — auto-resuming`);
+    scene.requestRender();
+  });
   const label = makeLabelLayer(o.basemap, o.tdtKey);
   if (label) viewer.imageryLayers.addImageryProvider(label);
+  (window as unknown as { __lsps: unknown }).__lsps = { Cesium, viewer };
+  // Land on the Hongyadong scouting spot on frame 1 (no intro flight, no US view ever)
+  viewer.camera.setView({
+    destination: Cesium.Cartesian3.fromDegrees(106.5789, 29.5643, 230),
+    orientation: {
+      heading: Cesium.Math.toRadians(148),
+      pitch: Cesium.Math.toRadians(-7),
+      roll: 0,
+    },
+  });
   return viewer;
 }
 

@@ -39,6 +39,25 @@ function perimeter(positions: Cesium.Cartesian3[]): number {
   return p;
 }
 
+/**
+ * Overpass returns closed ways with a duplicated closing vertex.
+ * Cesium's earcut triangulation chokes (RangeError: invalid array length) on
+ * consecutive duplicate points — strip them and any explicit ring closure.
+ */
+function cleanRing(g: { lat: number; lon: number }[]): number[] | null {
+  const flat: number[] = [];
+  for (let i = 0; i < g.length; i++) {
+    const p = g[i];
+    const q = g[i + 1];
+    if (q && q.lat === p.lat && q.lon === p.lon) continue;
+    flat.push(p.lon, p.lat);
+  }
+  if (flat.length >= 4 && flat[0] === flat[flat.length - 2] && flat[1] === flat[flat.length - 1]) {
+    flat.splice(flat.length - 2, 2);
+  }
+  return flat.length >= 6 ? flat : null;
+}
+
 let facadeCache = new Map<string, HTMLCanvasElement>();
 
 /** Procedural lit-window facade: warm gold windows on dark timber — 洪崖洞夜景. */
@@ -122,8 +141,8 @@ async function extrude(viewer: Cesium.Viewer, elements: OverpassElement[]): Prom
   }
   els.forEach((el, idx) => {
     const g = el.geometry!;
-    const flat: number[] = [];
-    for (const p of g) flat.push(p.lon, p.lat);
+    const flat = cleanRing(g);
+    if (!flat) return;
     const h = parseHeight(el.tags);
     const seed = idx * 7 + 3;
     const glow = el.tags?.name && /洪崖|吊脚|民宿|酒/.test(el.tags.name) ? 0.72 : 0.45;

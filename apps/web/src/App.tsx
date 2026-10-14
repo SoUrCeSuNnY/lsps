@@ -32,6 +32,7 @@ const scene0 = loadScene();
 // Default scene: 重庆洪崖洞 — stilted houses over the Jialing River, China's
 // most photographed blue-hour facade. Coordinates from OpenStreetMap (ODbL).
 const HONGYADONG = { lat: 29.562, lon: 106.5798, name: '重庆 · 洪崖洞' };
+let booted = false;
 // Qiansimen bridge, north bank: the classic Hongyadong blue-hour camera spot.
 const HYD_VIEW = { lon: 106.5789, lat: 29.5643, alt: 230, heading: 148, pitch: -7 };
 
@@ -118,20 +119,18 @@ export default function App() {
   };
 
   useEffect(() => {
-    let disposed = false;
     let tickId = 0;
-    if (viewerRef.current) return; // StrictMode double-mount guard: keep the first viewer
     let expSmooth: number | null = null;
+    if (booted) return; // module-level SYNCHRONOUS guard (ref is null during async createViewer)
+    booted = true;
     (async () => {
       const v = await createViewer(hostRef.current!, {
         ionToken: keysRef.current.ionToken,
         tdtKey: keysRef.current.tdtKey,
         basemap: sRef.current.basemap,
       });
-      if (disposed) return;
       viewerRef.current = v;
-      fxRef.current = new Effects(v);
-      starRef.current = new StarField(v.scene);
+      fxRef.current = new Effects(v);      starRef.current = new StarField(v.scene);
       pathRef.current = new SunPath(v);
       v.clock.currentTime = Cesium.JulianDate.fromDate(new Date(sRef.current.dateStr + 'Z'));
       v.clock.shouldAnimate = false;
@@ -221,7 +220,6 @@ export default function App() {
       tick();
     })();
     return () => {
-      disposed = true;
       if (tickId) window.clearInterval(tickId);
     };
   }, []);
