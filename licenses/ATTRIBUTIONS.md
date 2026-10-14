@@ -11,6 +11,10 @@ Displayed in-app where marked; this file is the canonical list.
   **7Timer!** (NASA/NIH Braunsberg) — public domain (fallback). Attribution shown in UI.
 - **Bortle dark-sky table**: Bortle 1958 (Sky & Telescope) public astronomy consensus
   values; SQM/lux mapping is our own EST model.
+- **Hongyadong 3D buildings**: building footprints/heights © OpenStreetMap
+  contributors (ODbL extract, prebaked via scripts/fetch-hongyadong.mjs into
+  apps/web/public/data/hongyadong.json); facade night-light texture is
+  procedural (generated at runtime, no third-party asset).
 - **Star catalog**: Yale Bright Star Catalog — public domain (5th ed.).
 - **Milky Way panorama** (optional asset via `npm run fetch:assets`): ESO / S. Brunier — CC BY 4.0.
 - **TLE data** (sat-trak plugin): CelesTrak, https://celestrak.org/data-access/ (free public data).

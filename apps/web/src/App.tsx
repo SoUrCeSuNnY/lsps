@@ -15,6 +15,7 @@ import { createViewer, flyTo, cameraGround, setVerticalFov, swapBasemap } from '
 import { Effects } from './cesium/effects';
 import { StarField } from './cesium/starfield';
 import { SunPath } from './cesium/sunpath';
+import { loadOsmBuildings, loadPackedBuildings } from './cesium/osm-buildings';
 import { daySky, nextEclipses, skyInfo } from './lib/astro';
 import { fetchCurrent, precipIntensity, skyKind, WEATHER_LABELS } from './lib/weather';
 import { searchPlaces } from './lib/search';
@@ -28,6 +29,12 @@ import { Timeline } from './ui/Timeline';
 const keysRef0 = loadKeys();
 const scene0 = loadScene();
 
+// Default scene: 重庆洪崖洞 — stilted houses over the Jialing River, China's
+// most photographed blue-hour facade. Coordinates from OpenStreetMap (ODbL).
+const HONGYADONG = { lat: 29.562, lon: 106.5798, name: '重庆 · 洪崖洞' };
+// Qiansimen bridge, north bank: the classic Hongyadong blue-hour camera spot.
+const HYD_VIEW = { lon: 106.5789, lat: 29.5643, alt: 230, heading: 148, pitch: -7 };
+
 function pad(n: number): string {
   return String(n).padStart(2, '0');
 }
@@ -35,9 +42,23 @@ function toInputValue(d: Date): string {
   return `${d.getUTCFullYear()}-${pad(d.getUTCMonth() + 1)}-${pad(d.getUTCDate())}T${pad(d.getUTCHours())}:${pad(d.getUTCMinutes())}`;
 }
 
-const now = new Date();
+/** Start at TODAY's blue hour (midpoint sunset -> civil dusk) at Hongyadong. */
+function initialDateStr(): string {
+  try {
+    const now2 = new Date();
+    const sky = skyInfo(now2, HONGYADONG.lat, HONGYADONG.lon);
+    const set = sky.sunset?.getTime();
+    const twi = sky.twilightEvening?.getTime();
+    if (set && twi && twi > set) return toInputValue(new Date((set + twi) / 2));
+  } catch {
+    /* fall through */
+  }
+  const d = new Date();
+  return `${d.getUTCFullYear()}-${pad(d.getUTCMonth() + 1)}-${pad(d.getUTCDate())}T10:15`;
+}
+
 const initial: Settings = {
-  dateStr: toInputValue(new Date(Math.floor(now.getTime() / 60000) * 60000)),
+  dateStr: initialDateStr(),
   playing: false,
   speed: 300,
   basemap: keysRef0.tdtKey ? 'tdt-img' : 'osm',
@@ -56,8 +77,8 @@ const initial: Settings = {
   shadows: true,
   sunPath: false,
   stars: true,
-  weatherMode: 'off',
-  cloud: 20,
+  weatherMode: 'live',
+  cloud: 40,
   precip: 'none',
   precipI: 0.5,
   fog: 0,
@@ -65,7 +86,7 @@ const initial: Settings = {
 };
 
 const initialReadout: Readout = {
-  lat: 39.9, lon: 116.4, heading: 0, roll: 0,
+  lat: HONGYADONG.lat, lon: HONGYADONG.lon, heading: 0, roll: 0,
   sunAlt: 0, sunAz: 0, moonAlt: 0, moonAz: 0, moonIllum: 0, waxing: true,
   lux: 0, ev100: 0, ndNeed: 0, delta: 0, hFov: 0, vFov: 0,
   golden: 'day', sunrise: '', sunset: '', twiE: '', weatherText: '',
@@ -80,7 +101,7 @@ export default function App() {
   const pathRef = useRef<SunPath | null>(null);
   const sRef = useRef<Settings>(initial);
   const keysRef = useRef<AppKeys>(keysRef0);
-  const observerRef = useRef({ lat: 39.9, lon: 116.4 });
+  const observerRef = useRef({ lat: HONGYADONG.lat, lon: HONGYADONG.lon });
   const skyRef = useRef<ReturnType<typeof skyInfo> | null>(null);
   const readoutRef = useRef<Readout>(initialReadout);
 
@@ -114,8 +135,26 @@ export default function App() {
       pathRef.current = new SunPath(v);
       v.clock.currentTime = Cesium.JulianDate.fromDate(new Date(sRef.current.dateStr + 'Z'));
       v.clock.shouldAnimate = false;
-      flyTo(v, 39.9, 116.4, 1500);
+      v.camera.flyTo({
+        destination: Cesium.Cartesian3.fromDegrees(HYD_VIEW.lon, HYD_VIEW.lat, HYD_VIEW.alt),
+        orientation: {
+          heading: Cesium.Math.toRadians(HYD_VIEW.heading),
+          pitch: Cesium.Math.toRadians(HYD_VIEW.pitch),
+          roll: 0,
+        },
+        duration: 0,
+      });
       setReady(true);
+      loadPackedBuildings(v, '/data/hongyadong.json')
+        .then((b) => console.log(`[hongyadong] ${b.count} 栋 3D 建筑（OSM ODbL 预置数据）`))
+        .catch(async () => {
+          try {
+            const b = await loadOsmBuildings(v, HONGYADONG.lat, HONGYADONG.lon);
+            console.log(`[hongyadong] ${b.count} 栋（Overpass 实时）`);
+          } catch (e) {
+            console.warn('[hongyadong] 建筑加载失败', e);
+          }
+        });
 
       const tick = () => {
         const st = sRef.current;
