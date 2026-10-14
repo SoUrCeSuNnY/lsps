@@ -60,7 +60,7 @@ export class StarField {
       Cesium.Matrix4.multiplyByPoint(m, this.scratch, this.scratch);
       const p = this.pts[i];
       p.position = Cesium.Cartesian3.clone(this.scratch);
-      const tw = 0.85 + 0.15 * Math.sin(i * 12.9898 + Cesium.JulianDate.totalDays(time) * 86400);
+      const tw = 0.94 + 0.06 * Math.sin(i * 12.9898 + Cesium.JulianDate.totalDays(time) * 1200);
       p.color = this.baseColor[i].withAlpha(Math.min(1, vis * tw));
     }
   }

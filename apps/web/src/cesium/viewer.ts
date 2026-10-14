@@ -34,8 +34,11 @@ export async function createViewer(container: HTMLElement, o: ViewerOpts): Promi
   scene.highDynamicRange = true;
   scene.fog.enabled = true;
   viewer.shadows = true;
-  const sm = (scene as unknown as { shadowMap?: { shadowDarkness: number } }).shadowMap;
-  if (sm) sm.shadowDarkness = 0.85;
+  const sm = (scene as unknown as { shadowMap?: { shadowDarkness: number; softShadows: boolean } }).shadowMap;
+  if (sm) {
+    sm.shadowDarkness = 0.85;
+    sm.softShadows = true; // PCSS: kills the frame-to-frame hard-edge shadow flicker during time-lapse
+  }
   viewer.scene.screenSpaceCameraController.maximumZoomDistance = 4e7;
   const label = makeLabelLayer(o.basemap, o.tdtKey);
   if (label) viewer.imageryLayers.addImageryProvider(label);

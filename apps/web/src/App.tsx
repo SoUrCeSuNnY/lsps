@@ -2,7 +2,6 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import * as Cesium from 'cesium';
 import {
   exposureDeltaStops,
-  exposureFactor,
   illuminance,
   goldenHourQuality,
   ndStopsNeeded,
@@ -101,6 +100,7 @@ export default function App() {
     let disposed = false;
     let tickId = 0;
     if (viewerRef.current) return; // StrictMode double-mount guard: keep the first viewer
+    let expSmooth: number | null = null;
     (async () => {
       const v = await createViewer(hostRef.current!, {
         ionToken: keysRef.current.ionToken,
@@ -135,8 +135,13 @@ export default function App() {
           bortle: st.bortle,
         });
         const delta = exposureDeltaStops(lux, shutter, st.iso, st.aperture, st.ndStops);
-        fxRef.current?.setExposure(exposureFactor(delta, 0) * 0.32);
-        const night = sky.sunAlt < -6 ? 1 : 0;
+        // Smoothed, bounded exposure: time-lapse playback moves the sun in jumps,
+        // a raw per-tick exposure recomputation pumps brightness = visible flicker.
+        const clamped = Math.max(-4.5, Math.min(2.5, delta));
+        const expTarget = Math.pow(2, clamped) * 0.32;
+        expSmooth = expSmooth === null ? expTarget : expSmooth + (expTarget - expSmooth) * 0.12;
+        fxRef.current?.setExposure(expSmooth);
+        const night = Math.min(1, Math.max(0, (-sky.sunAlt - 3) / 5)); // continuous, no pop at -6 deg
         (v.scene as unknown as { moonIntensity: number }).moonIntensity =
           0.05 + 2.4 * sky.moonIllum * Math.max(0, Math.sin((sky.moonAlt * Math.PI) / 180)) * night;
         starRef.current?.update(jd, sky.sunAlt);
@@ -235,17 +240,16 @@ export default function App() {
       try {
         const w = await fetchCurrent(r.lat, r.lon);
         if (cancel) return;
-        set({
-          cloud: w.cloudPct,
-          fog: skyKind(w.code) === 'fog' ? 0.8 : 0,
-          precip:
-            skyKind(w.code) === 'rain' || skyKind(w.code) === 'storm'
-              ? 'rain'
-              : skyKind(w.code) === 'snow'
-                ? 'snow'
-                : 'none',
-          precipI: precipIntensity(w),
-        });
+        const cur = sRef.current;
+        const kind = skyKind(w.code);
+        const prec = kind === 'rain' || kind === 'storm' ? 'rain' : kind === 'snow' ? 'snow' : 'none';
+        const fogV = kind === 'fog' ? 0.8 : 0;
+        const sp: Partial<Settings> = {};
+        if (Math.abs(w.cloudPct - cur.cloud) > 6) sp.cloud = w.cloudPct;
+        if (prec !== cur.precip) sp.precip = prec;
+        if (Math.abs(precipIntensity(w) - cur.precipI) > 0.15) sp.precipI = precipIntensity(w);
+        if (fogV !== cur.fog) sp.fog = fogV;
+        set(sp);
         const patch: Readout = {
           ...readoutRef.current,
           weatherText: `${WEATHER_LABELS[w.code] ?? w.code} ${w.tempC.toFixed(0)}°C 云${w.cloudPct}% · ${w.provider}`,
