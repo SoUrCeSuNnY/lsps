@@ -1,5 +1,7 @@
 const DEG = Math.PI / 180;
 
+import { bortleLux } from './nightsky.ts';
+
 function clamp01(x: number): number {
   return Math.min(1, Math.max(0, x));
 }
@@ -9,7 +11,7 @@ function lerp(a: number, b: number, t: number): number {
 }
 
 /**
- * Simplified horizontal-plane illuminance model (lux), tuned for previz — not a
+ * Simplified horizontal-plane illuminance model (lux), tuned for previz �?not a
  * radiometric transfer model. Anchors:
  *  - Clear noon sun overhead: ~110,000 lx direct + ~20,000 lx sky diffuse
  *  - Overcast noon: ~15% of clear
@@ -21,6 +23,7 @@ export function illuminance(lux: {
   cloudPct: number;
   moonAltDeg: number;
   moonPhase: number;
+  bortle?: number;
 }): number {
   const { sunAltDeg, cloudPct, moonAltDeg, moonPhase } = lux;
   const cloud = clamp01(cloudPct / 100);
@@ -31,13 +34,14 @@ export function illuminance(lux: {
     return lerp(clear, overcast, cloud);
   }
   if (sunAltDeg > -6) {
-    const day = illuminance({ sunAltDeg: 0.5, cloudPct, moonAltDeg, moonPhase });
+    const day = illuminance({ sunAltDeg: 0.5, cloudPct, moonAltDeg, moonPhase, bortle: lux.bortle });
     const t = clamp01(-sunAltDeg / 6);
     return day * lerp(0.2, 0.02, t);
   }
   const moon = Math.max(0, Math.sin(moonAltDeg * DEG)) * 0.25 * clamp01(moonPhase);
-  const sky = 0.002 + (1 - cloud) * 0.006;
-  return moon * (1 - 0.85 * cloud) + sky;
+  const pollution = lux.bortle ? bortleLux(lux.bortle, cloudPct) : (1 - cloud) * 0.006;
+  const starlight = 0.002;
+  return moon * (1 - 0.85 * cloud) + starlight + pollution;
 }
 
 /** Golden hour window estimate around sunrise/sunset (sun above -4°). */

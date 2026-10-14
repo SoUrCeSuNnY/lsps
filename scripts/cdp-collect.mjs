@@ -15,10 +15,19 @@ const seen = new Set();
 ws.onmessage = (e) => {
   const m = JSON.parse(e.data);
   const p = m.method;
+  if (p === 'Log.entryAdded') {
+    const en = m.params.entry;
+    if (en.level === 'error' || en.level === 'warning') {
+      const txt = `${en.source} ${en.url}:${en.lineNumber} ${en.text}\n${en.stackTrace?.callFrames.map((f) => `  at ${f.url}:${f.lineNumber}`).join('\n') ?? ''}`;
+      if (!seen.has(txt)) { seen.add(txt); console.log('=== LOG.' + en.level + ' ===\n' + txt.slice(0, 2000)); }
+    }
+  }
   if (p === 'Runtime.exceptionThrown') {
     const d = m.params.exceptionDetails;
     const txt = d.exception?.description || d.text;
-    if (!seen.has(txt)) { seen.add(txt); console.log('=== EXCEPTION ===\n' + txt.slice(0, 2000)); }
+    const stack = (d.stack?.callFrames || []).map((f) => `  at ${f.functionName} ${f.url}:${f.lineNumber}`).join('\n');
+    const full = `${txt}\n${stack}`;
+    if (!seen.has(full)) { seen.add(full); console.log('=== EXCEPTION ===\n' + full.slice(0, 2000)); }
   }
   if (p === 'Runtime.consoleAPICall' && ['error', 'warning'].includes(m.params.type)) {
     const txt = m.params.args.map((a) => a.description ?? a.value).join('\n');

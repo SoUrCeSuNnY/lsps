@@ -1,57 +1,118 @@
 import * as Cesium from 'cesium';
 
-export type Basemap = 'tdt-img' | 'tdt-vec' | 'osm' | 'ion-bing';
+export interface MapSource {
+  id: string;
+  label: string;
+  requires: 'none' | 'tdt' | 'ion';
+  group: 'china' | 'global';
+  main: (keys: { ionToken: string; tdtKey: string }) => Promise<Cesium.ImageryProvider>;
+  labelLayer?: (keys: { tdtKey: string }) => Cesium.ImageryProvider | null;
+}
 
-export const BASEMAPS: { id: Basemap; label: string; requires: 'tdt' | 'ion' | 'none' }[] = [
-  { id: 'tdt-img', label: '天地图 影像（大陆直连）', requires: 'tdt' },
-  { id: 'tdt-vec', label: '天地图 矢量', requires: 'tdt' },
-  { id: 'ion-bing', label: 'Bing Aerial (Cesium ion)', requires: 'ion' },
-  { id: 'osm', label: 'OpenStreetMap', requires: 'none' },
-];
+const TDT_SUB = ['0', '1', '2', '3', '4', '5', '6', '7'];
 
-const TDT_SUBDOMAINS = ['0', '1', '2', '3', '4', '5', '6', '7'];
-
-function tdt(layer: string, key: string): Cesium.UrlTemplateImageryProvider {
+/** Standard Tianditu WMTS endpoint (same pattern used by professional apps). */
+function tdtWmts(layer: 'img' | 'vec' | 'cia' | 'cvb', key: string): Cesium.UrlTemplateImageryProvider {
   return new Cesium.UrlTemplateImageryProvider({
-    url: `https://t{s}.tianditu.gov.cn/DataServer?T=${layer}&x={x}&y={y}&l={z}&tk=${key}`,
-    subdomains: TDT_SUBDOMAINS,
+    url:
+      `https://t{s}.tianditu.gov.cn/${layer}_w/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0` +
+      `&LAYER=${layer}&STYLE=default&TILEMATRIXSET=w&FORMAT=tiles&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}&tk=${key}`,
+    subdomains: TDT_SUB,
     maximumLevel: 18,
     credit: new Cesium.Credit('© 天地图'),
   });
 }
 
-export async function makeImagery(
-  kind: Basemap,
-  ionToken: string,
-  tdtKey: string,
-): Promise<Cesium.ImageryProvider> {
-  switch (kind) {
-    case 'ion-bing':
-      if (!ionToken) throw new Error('需要 VITE_CESIUM_ION_TOKEN');
-      Cesium.Ion.defaultAccessToken = ionToken;
-      return Cesium.createWorldImageryAsync({ style: Cesium.IonWorldImageryStyle.AERIAL });
-    case 'tdt-img':
-      if (!tdtKey) throw new Error('需要 VITE_TDT_KEY');
-      return tdt('img_w', tdtKey);
-    case 'tdt-vec':
-      if (!tdtKey) throw new Error('需要 VITE_TDT_KEY');
-      return tdt('vec_w', tdtKey);
-    case 'osm':
-    default:
-      return new Cesium.UrlTemplateImageryProvider({
-        url: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-        maximumLevel: 19,
-        credit: new Cesium.Credit('© OpenStreetMap contributors (ODbL)'),
-      });
-  }
+/** AutoNavi public raster tiles (webst=imagery, webrd=vector). No key, attribution required. */
+function amapTiles(style: '6' | '8', sub: 'webst' | 'webrd'): Cesium.UrlTemplateImageryProvider {
+  return new Cesium.UrlTemplateImageryProvider({
+    url: `https://${sub}0{s}.is.autonavi.com/appmaptile?lang=zh_cn&size=1&scale=1&style=${style}&x={x}&y={y}&z={z}`,
+    subdomains: ['1', '2', '3', '4'],
+    maximumLevel: 18,
+    credit: new Cesium.Credit('© 高德地图'),
+  });
 }
 
-/** 天地图注记图层（img/vec 搭配 cva/cvb），仅 tdt 底图时返回。 */
-export function makeTdtLabelLayer(kind: Basemap, tdtKey: string): Cesium.ImageryProvider | null {
-  if (!tdtKey) return null;
-  if (kind === 'tdt-img') return tdt('cva_w', tdtKey);
-  if (kind === 'tdt-vec') return tdt('cvb_w', tdtKey);
-  return null;
+async function ionBing(keys: { ionToken: string }): Promise<Cesium.ImageryProvider> {
+  if (!keys.ionToken) throw new Error('需要 ion token');
+  Cesium.Ion.defaultAccessToken = keys.ionToken;
+  return Cesium.createWorldImageryAsync({ style: Cesium.IonWorldImageryStyle.AERIAL });
+}
+
+export const MAP_SOURCES: MapSource[] = [
+  {
+    id: 'tdt-img',
+    label: '天地图 影像（大陆直连）',
+    requires: 'tdt',
+    group: 'china',
+    main: (k) => Promise.resolve(tdtWmts('img', k.tdtKey)),
+    labelLayer: (k) => (k.tdtKey ? tdtWmts('cia', k.tdtKey) : null),
+  },
+  {
+    id: 'tdt-vec',
+    label: '天地图 矢量',
+    requires: 'tdt',
+    group: 'china',
+    main: (k) => Promise.resolve(tdtWmts('vec', k.tdtKey)),
+    labelLayer: (k) => (k.tdtKey ? tdtWmts('cvb', k.tdtKey) : null),
+  },
+  {
+    id: 'amap-img',
+    label: '高德 卫星（免 key）',
+    requires: 'none',
+    group: 'china',
+    main: () => Promise.resolve(amapTiles('6', 'webst')),
+    labelLayer: () => amapTiles('8', 'webrd'),
+  },
+  {
+    id: 'amap-vec',
+    label: '高德 矢量（免 key）',
+    requires: 'none',
+    group: 'china',
+    main: () => Promise.resolve(amapTiles('8', 'webrd')),
+  },
+  {
+    id: 'osm',
+    label: 'OpenStreetMap',
+    requires: 'none',
+    group: 'global',
+    main: () =>
+      Promise.resolve(
+        new Cesium.UrlTemplateImageryProvider({
+          url: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+          maximumLevel: 19,
+          credit: new Cesium.Credit('© OpenStreetMap contributors (ODbL)'),
+        }),
+      ),
+  },
+  {
+    id: 'ion-bing',
+    label: 'Bing Aerial (Cesium ion)',
+    requires: 'ion',
+    group: 'global',
+    main: (k) => ionBing(k),
+  },
+];
+
+export type Basemap = string;
+
+export function mapSource(id: Basemap): MapSource {
+  return MAP_SOURCES.find((m) => m.id === id) ?? MAP_SOURCES.find((m) => m.id === 'osm')!;
+}
+
+export async function makeImagery(
+  id: Basemap,
+  keys: { ionToken: string; tdtKey: string },
+): Promise<Cesium.ImageryProvider> {
+  return mapSource(id).main(keys);
+}
+
+export function makeLabelLayer(
+  id: Basemap,
+  tdtKey: string,
+): Cesium.ImageryProvider | null {
+  const src = mapSource(id);
+  return src.labelLayer ? src.labelLayer({ tdtKey }) : null;
 }
 
 export async function makeTerrain(ionToken: string): Promise<Cesium.Terrain | undefined> {

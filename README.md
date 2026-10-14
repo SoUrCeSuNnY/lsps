@@ -8,21 +8,26 @@ Web 版 **3D 选址/取景软件**：联网高精度 3D 地图上模拟任意时
 
 ## 功能现状
 
-- 🌍 **3D 地图**：CesiumJS（Apache-2.0）。天地图影像/矢量（大陆直连）、OSM、Cesium ion
-  Bing 影像 + World Terrain 地形；地址搜索（天地图地理编码 + OSM Nominatim）。
+- 🌍 **3D 地图**：CesiumJS（Apache-2.0）。**多源注册表**：天地图影像/矢量（WMTS，大陆直连）、
+  高德卫星/矢量（公开瓦片免 key）、OSM、Cesium ion Bing；POI 搜索聚合
+  天地图/高德/腾讯（用户 key）+ Nominatim；设置页在线填 key（localStorage）。
 - 🕒 **时间机器**：精确到分钟的 UTC 时钟驱动太阳位置（Cesium 内置 ELP/ESOC 天文历），
-  实时昼夜、晨昏蒙影、建筑/地形阴影（shadow map）。
+  实时昼夜、晨昏蒙影、建筑/地形阴影（shadow map）；**24h 事件时间轴**
+  （照度曲线 + 日出/日落/晨光/暮光/月升落/日月食标记，拖动/点击跳转）。
 - 📷 **取景器模拟**：传感器（全幅/Super35/S16/M43…）× 焦段 → 视场角；1.85:1 / 2.39:1 /
   16:9 / 4:3 / 9:16 画幅遮幅、三分线、安全框、水平仪、方位/横滚读数；
   物理曝光模型（照度→EV→光圈/ISO/快门/ND 匹配，画面亮度实时响应）；一键截图（含取景框烘焙）。
 - ☀️ **太阳路径**：当天太阳弧线（晨昏蓝调着色）+ 地平圈 + 太阳实时位置标记；
   日出/日落/民用晨昏蒙影时刻（astronomy-engine，MIT）。
 - 🌙 **星空**：夜半后天球亮星（Yale BSC 公有领域星表，J2000→地固系逐帧旋转变换），
-  月相/月亮高度驱动月光照明强度。
-- 🌦 **天气**：Open-Meteo 公开 API（免 key）取实况云量/降水/雾/风，驱动云量压暗、
-  雨雪粒子后处理（自研 GLSL）与雾浓度；手动模式自由调节。
+  月相/月亮高度驱动月光照明强度；**Bortle 1-9 暗夜等级**（SQM/极限星等/银河可见性
+  与曝光联动，Bortle 1958 公开共识表）。
+- 🌘 **日月食**：未来两次日食/月食预测（astronomy-engine 食计算），本地可见性与
+  食分，一键跳转拍摄时间。
+- 🌦 **天气**：Open-Meteo 实况（免 key，主源）+ **7Timer!**（NASA，公有领域，备源）；
+  云量压暗、雨雪粒子（自研 GLSL）、雾浓度。
 - 🛰 **卫星过境（插件）**：`plugins/sat-trak` —— satellite.js（GPL-2.0）安装在
-  主 workspace 之外，本地 HTTP+JSON 协议通信（GPL 隔离示范）。
+  主 workspace 之外，本地 HTTP+JSON 协议通信（GPL 隔离示范，数据源 CelesTrak）。
 
 ## 快速开始
 
@@ -61,15 +66,19 @@ CI 每次构建跑 `scripts/check-licenses.mjs`：生产依赖树出现 GPL/AGPL
 - [x] M4 星空：天球亮星 / 月光照明
 - [x] M5 天气：Open-Meteo 实况 → 云/雨/雪/雾
 - [x] M6 卫星插件骨架 + 合规文件
-- [ ] 景深（相机深度纹理 → DOF）、镜头 flare 移植、星轨模式、预报时间轴（v0.2）
+- [x] v0.2 摄影向：多源地图注册表（高德/腾讯/天地图WMTS）· 24h事件时间轴 ·
+  Bortle暗夜联动曝光 · 7Timer备源 · 日月食预测 · 在线设置页（灵感致谢与 clean-room
+  声明见 `docs/DESIGN_NOTES.md`）
+- [ ] 景深（相机深度纹理 → DOF）、镜头 flare 移植、星轨模式、预报时间轴（v0.3）
 
 ## 数据源矩阵（免梯子）
 
 | 数据 | 来源 | 许可 |
 |---|---|---|
-| 影像 | 天地图 / Bing(ion) / OSM | 注册免费 / ion ToS / ODbL |
+| 影像 | 天地图 WMTS / 高德公开瓦片 / Bing(ion) / OSM | 注册免费 / 署名直用 / ion ToS / ODbL |
 | 地形 | Cesium World Terrain | ion 个人免费额度 |
-| 天气 | Open-Meteo API | 代码 AGPL 不引入；数据 CC BY 4.0 |
+| POI | 天地图/高德/腾讯（用户 key）/ Nominatim | 各官方条款 |
+| 天气 | Open-Meteo API（主）+ 7Timer!（备） | 代码 AGPL 不引入；数据 CC BY 4.0 / 公有领域 |
 | 星表 | Yale Bright Star Catalog | 公有领域 |
 | 天文历 | astronomy-engine + Cesium ELP/MPP02 | MIT / 公开科学数据 |
 | 卫星星历 | CelesTrak TLE | 免费公开数据 |

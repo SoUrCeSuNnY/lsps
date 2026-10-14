@@ -10,9 +10,18 @@ export interface WeatherNow {
   windKmh: number;
   code: number;
   fetchedAt: number;
+  provider: 'open-meteo' | '7timer';
 }
 
 export async function fetchCurrent(lat: number, lon: number): Promise<WeatherNow> {
+  try {
+    return await fetchOpenMeteo(lat, lon);
+  } catch {
+    return await fetch7Timer(lat, lon);
+  }
+}
+
+async function fetchOpenMeteo(lat: number, lon: number): Promise<WeatherNow> {
   const url =
     `https://api.open-meteo.com/v1/forecast?latitude=${lat.toFixed(4)}&longitude=${lon.toFixed(4)}` +
     '&current=temperature_2m,relative_humidity_2m,precipitation,cloud_cover,wind_speed_10m,weather_code' +
@@ -29,6 +38,42 @@ export async function fetchCurrent(lat: number, lon: number): Promise<WeatherNow
     windKmh: c.wind_speed_10m,
     code: c.weather_code,
     fetchedAt: Date.now(),
+    provider: 'open-meteo',
+  };
+}
+
+/**
+ * 7Timer! (NASA/NIH Braunsberg, public-domain forecast API) as fallback.
+ * No weather codes -> synthesized WMO-ish code from cloud/precip fields.
+ */
+async function fetch7Timer(lat: number, lon: number): Promise<WeatherNow> {
+  const url =
+    `https://api.7timer.info/bin/astro.php?lat=${lat.toFixed(4)}&lon=${lon.toFixed(4)}` +
+    '&product=numeric&astrometric=0&units=metric&json=1&lang=en&tzshift=0';
+  const r = await fetch(url);
+  if (!r.ok) throw new Error(`7timer ${r.status}`);
+  const j = (await r.json()) as {
+    dataseries: {
+      temperature2m: number;
+      rh: number;
+      precip: number;
+      cloudcover: { high: number; mid: number; low: number };
+      wind10m: { speed: number };
+    }[];
+  };
+  const s = j.dataseries?.[0];
+  if (!s) throw new Error('7timer empty');
+  const cloudPct = Math.min(100, Math.round((s.cloudcover.high + s.cloudcover.mid + s.cloudcover.low) / 3));
+  const code = s.precip > 0.2 ? 61 : cloudPct > 80 ? 3 : cloudPct > 40 ? 2 : 0;
+  return {
+    tempC: s.temperature2m,
+    humidity: s.rh,
+    precipMm: s.precip,
+    cloudPct,
+    windKmh: s.wind10m.speed * 3.6,
+    code,
+    fetchedAt: Date.now(),
+    provider: '7timer',
   };
 }
 

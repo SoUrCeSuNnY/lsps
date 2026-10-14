@@ -105,3 +105,35 @@ input:disabled, select:disabled { opacity: 0.4; }
 .privacy { border-top: 1px dashed var(--line); padding-top: 8px; margin-top: 14px; }
 .modal-foot { display: flex; gap: 8px; margin-top: 12px; }
 button.primary { background: #2a3a4e; border-color: var(--acc); color: var(--acc); }
+
+/* timeline */
+.timeline {
+  position: absolute; left: 50%; transform: translateX(-50%); bottom: 10px;
+  width: min(860px, calc(100% - 40px)); z-index: 6;
+  background: rgba(10, 14, 20, 0.82); border: 1px solid var(--line);
+  border-radius: 10px; padding: 20px 12px 4px; user-select: none;
+}
+.timeline.collapsed { padding: 4px; width: auto; }
+.timeline.collapsed button { border: none; background: none; color: var(--acc); cursor: pointer; }
+.tl-events { position: absolute; top: -2px; left: 12px; right: 12px; height: 20px; }
+.tl-marker {
+  position: absolute; transform: translateX(-50%); white-space: nowrap;
+  font-size: 10.5px; padding: 1px 4px; background: rgba(20,26,35,.9); color: var(--txt);
+}
+.tl-marker.eclipse { color: #e4573d; border-color: #e4573d; }
+.tl-bar { position: relative; height: 26px; border-radius: 6px; border: 1px solid var(--line); cursor: crosshair; overflow: hidden; }
+.tl-band { position: absolute; top: 0; bottom: 0; }
+.tl-band.golden { background: rgba(228, 87, 61, 0.28); }
+.tl-band.blue { background: rgba(120, 140, 220, 0.30); }
+.tl-cursor { position: absolute; top: -2px; bottom: -2px; width: 2px; background: #ff5a3c; }
+.tl-cursor span {
+  position: absolute; top: -17px; left: 50%; transform: translateX(-50%);
+  font: 10px monospace; color: #ff9a80; background: rgba(10,14,20,.9); padding: 0 3px; border-radius: 3px;
+}
+.tl-scale { position: relative; height: 14px; margin-top: 2px; }
+.tl-scale span { position: absolute; transform: translateX(-50%); font: 9px monospace; color: var(--dim); }
+.tl-toggle { position: absolute; right: 0; top: -2px; padding: 0 5px; border: none; background: none; color: var(--dim); }
+.row-flex { display: flex; justify-content: space-between; align-items: center; }
+.hint-inline { color: var(--dim); font-size: 10.5px; margin-left: 8px; font-weight: normal; }
+.bortle-preview { color: #7fd1ae; }
+.modal .field select { width: 100%; }

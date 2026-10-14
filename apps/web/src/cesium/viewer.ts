@@ -1,5 +1,5 @@
 import * as Cesium from 'cesium';
-import { Basemap, makeImagery, makeTerrain, makeTdtLabelLayer } from './providers';
+import { Basemap, makeImagery, makeLabelLayer, makeTerrain } from './providers';
 
 export interface ViewerOpts {
   ionToken: string;
@@ -8,7 +8,7 @@ export interface ViewerOpts {
 }
 
 export async function createViewer(container: HTMLElement, o: ViewerOpts): Promise<Cesium.Viewer> {
-  const base = await makeImagery(o.basemap, o.ionToken, o.tdtKey);
+  const base = await makeImagery(o.basemap, o);
   const terrain = await makeTerrain(o.ionToken);
   const viewer = new Cesium.Viewer(container, {
     baseLayer: Cesium.ImageryLayer.fromProviderAsync(Promise.resolve(base)),
@@ -37,10 +37,8 @@ export async function createViewer(container: HTMLElement, o: ViewerOpts): Promi
   const sm = (scene as unknown as { shadowMap?: { shadowDarkness: number } }).shadowMap;
   if (sm) sm.shadowDarkness = 0.85;
   viewer.scene.screenSpaceCameraController.maximumZoomDistance = 4e7;
-  if (o.tdtKey) {
-    const label = makeTdtLabelLayer(o.basemap, o.tdtKey);
-    if (label) viewer.imageryLayers.addImageryProvider(label);
-  }
+  const label = makeLabelLayer(o.basemap, o.tdtKey);
+  if (label) viewer.imageryLayers.addImageryProvider(label);
   return viewer;
 }
 
@@ -50,13 +48,11 @@ export async function swapBasemap(
   ionToken: string,
   tdtKey: string,
 ): Promise<void> {
-  const base = await makeImagery(kind, ionToken, tdtKey);
+  const base = await makeImagery(kind, { ionToken, tdtKey });
   viewer.imageryLayers.removeAll();
   viewer.imageryLayers.addImageryProvider(base);
-  if (tdtKey) {
-    const label = makeTdtLabelLayer(kind, tdtKey);
-    if (label) viewer.imageryLayers.addImageryProvider(label);
-  }
+  const label = makeLabelLayer(kind, tdtKey);
+  if (label) viewer.imageryLayers.addImageryProvider(label);
 }
 
 export function setVerticalFov(viewer: Cesium.Viewer, fovDeg: number): void {

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import * as Cesium from 'cesium';
 import {
   exposureDeltaStops,
@@ -10,21 +10,24 @@ import {
   verticalFovDeg,
   horizontalFovDeg,
   sensorById,
+  skyQuality,
 } from '@lsps/core';
 import { createViewer, flyTo, cameraGround, setVerticalFov, swapBasemap } from './cesium/viewer';
 import { Effects } from './cesium/effects';
 import { StarField } from './cesium/starfield';
 import { SunPath } from './cesium/sunpath';
-import { skyInfo } from './lib/astro';
+import { daySky, nextEclipses, skyInfo } from './lib/astro';
 import { fetchCurrent, precipIntensity, skyKind, WEATHER_LABELS } from './lib/weather';
 import { searchPlaces } from './lib/search';
 import { captureFrame, download } from './lib/capture';
-import { AppKeys, loadKeys } from './lib/keyStore';
+import { AppKeys, loadKeys, loadScene, saveScene, Scene } from './lib/keyStore';
 import { Panels, Readout, Settings } from './ui/Panels';
 import { Viewfinder } from './ui/Viewfinder';
 import { SettingsModal } from './ui/SettingsModal';
+import { Timeline } from './ui/Timeline';
 
 const keysRef0 = loadKeys();
+const scene0 = loadScene();
 
 function pad(n: number): string {
   return String(n).padStart(2, '0');
@@ -59,6 +62,7 @@ const initial: Settings = {
   precip: 'none',
   precipI: 0.5,
   fog: 0,
+  bortle: scene0.bortle,
 };
 
 const initialReadout: Readout = {
@@ -66,6 +70,7 @@ const initialReadout: Readout = {
   sunAlt: 0, sunAz: 0, moonAlt: 0, moonAz: 0, moonIllum: 0, waxing: true,
   lux: 0, ev100: 0, ndNeed: 0, delta: 0, hFov: 0, vFov: 0,
   golden: 'day', sunrise: '', sunset: '', twiE: '', weatherText: '',
+  sqm: 21, nelm: 6, mwText: '',
 };
 
 export default function App() {
@@ -127,6 +132,7 @@ export default function App() {
           cloudPct: st.cloud,
           moonAltDeg: sky.moonAlt,
           moonPhase: sky.moonIllum,
+          bortle: st.bortle,
         });
         const delta = exposureDeltaStops(lux, shutter, st.iso, st.aperture, st.ndStops);
         fxRef.current?.setExposure(exposureFactor(delta, 0) * 0.32);
@@ -136,6 +142,13 @@ export default function App() {
         starRef.current?.update(jd, sky.sunAlt);
         if (st.sunPath) pathRef.current?.setMarker(jd, lat, lon);
         const sensor = sensorById(st.sensorId);
+        const q = skyQuality({
+          bortle: st.bortle,
+          moonIllum: sky.moonIllum,
+          moonAltDeg: sky.moonAlt,
+          cloudPct: st.cloud,
+          sunAltDeg: sky.sunAlt,
+        });
         readoutRef.current = {
           lat, lon,
           heading: (360 - Cesium.Math.toDegrees(v.camera.heading)) % 360,
@@ -154,9 +167,11 @@ export default function App() {
           sunset: sky.sunset ? sky.sunset.toISOString() : '',
           twiE: sky.twilightEvening ? sky.twilightEvening.toISOString() : '',
           weatherText: readoutRef.current.weatherText,
+          sqm: q.sqm,
+          nelm: q.nelm,
+          mwText: q.text,
         };
         setR(readoutRef.current);
-        // keep dateStr in sync while playing
         if (st.playing) set({ dateStr: toInputValue(date) });
       };
       tickId = window.setInterval(tick, 400);
@@ -233,7 +248,7 @@ export default function App() {
         });
         const patch: Readout = {
           ...readoutRef.current,
-          weatherText: `${WEATHER_LABELS[w.code] ?? w.code} ${w.tempC.toFixed(0)}°C 云${w.cloudPct}% · Open-Meteo`,
+          weatherText: `${WEATHER_LABELS[w.code] ?? w.code} ${w.tempC.toFixed(0)}°C 云${w.cloudPct}% · ${w.provider}`,
         };
         readoutRef.current = patch;
         setR(patch);
@@ -248,8 +263,26 @@ export default function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [s.weatherMode, Math.round(r.lat * 100), Math.round(r.lon * 100)]);
 
+  // timeline data (24h curve for the current UTC day)
+  const dayKey = s.dateStr.slice(0, 10);
+  const lat2 = Math.round(r.lat * 50) / 50;
+  const lon2 = Math.round(r.lon * 50) / 50;
+  const day = useMemo(() => {
+    const ms = Date.parse(dayKey + 'T00:00:00Z');
+    return daySky(ms, lat2, lon2, s.cloud, s.bortle);
+  }, [dayKey, lat2, lon2, s.cloud, s.bortle]);
+
+  const eclipses = useMemo(
+    () => nextEclipses(new Date(s.dateStr + 'Z'), lat2, lon2, 2),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [dayKey.slice(0, 7), lat2, lon2],
+  );
+  const eclipseMarks = eclipses
+    .filter((e) => e.peak.getTime() >= day.dayStartMs && e.peak.getTime() <= day.dayStartMs + 864e5)
+    .map((e) => ({ t: e.peak.getTime(), label: e.type === 'solar' ? '日食' : '月食' }));
+
   const onSearch = async (q: string) => {
-    const res = await searchPlaces(q, keysRef.current.nominatimUrl, keysRef.current.tdtKey);
+    const res = await searchPlaces(q, keysRef.current);
     setResults(res);
   };
 
@@ -272,12 +305,18 @@ export default function App() {
     swapBasemap(v, sRef.current.basemap, k.ionToken, k.tdtKey).catch((e) => console.warn(e));
   };
 
+  const onSceneSaved = (sc: Scene) => {
+    saveScene(sc);
+    set({ bortle: sc.bortle });
+  };
+
   const onPick = (p: { lat: number; lon: number }) => {
     observerRef.current = { lat: p.lat, lon: p.lon };
     if (viewerRef.current) flyTo(viewerRef.current, p.lat, p.lon, 1200);
   };
 
   const onJump = (d: Date) => set({ dateStr: toInputValue(d), playing: false });
+  const onScrub = (ms: number) => set({ dateStr: toInputValue(new Date(ms)), playing: false });
 
   const onShot = () => {
     const v = viewerRef.current;
@@ -290,6 +329,7 @@ export default function App() {
         `${s.focal}mm  f/${s.aperture}  ISO${s.iso}  ND${s.ndStops}`,
         `太阳 ${r.sunAlt.toFixed(0)}°/${r.sunAz.toFixed(0)}°  ${r.golden}`,
         `${r.lat.toFixed(4)}, ${r.lon.toFixed(4)}`,
+        `B${s.bortle} SQM ${r.sqm.toFixed(1)} ${r.mwText}`,
       ],
     });
     if (url) download(url, `lsps-${s.dateStr.replace(':', '')}.png`);
@@ -302,7 +342,7 @@ export default function App() {
           LSPS <span>3D 取景器</span>
           <button
             className="gear"
-            title={`密钥设置 — ion:${keys.ionToken ? '✓' : '未配置'} 天地图:${keys.tdtKey ? '✓' : '未配置'}`}
+            title={`密钥设置 — ion:${keys.ionToken ? '✓' : '未配置'} 天地图:${keys.tdtKey ? '✓' : '未配置'} 高德:${keys.amapKey ? '✓' : '未配置'}`}
             onClick={() => setShowSettings(true)}
           >
             ⚙ 设置
@@ -325,30 +365,42 @@ export default function App() {
           hasKeys={{ ion: !!keys.ionToken, tdt: !!keys.tdtKey }}
         />
         <div className="astro">
-          <div className="sec-t">天文数据</div>
+          <div className="sec-t">天象与夜空</div>
           <table>
             <tbody>
               <tr><td>日出 / 日落</td><td>{r.sunrise ? new Date(r.sunrise).toUTCString().slice(17, 22) : '--'} / {r.sunset ? new Date(r.sunset).toUTCString().slice(17, 22) : '--'} UTC</td></tr>
-              <tr><td>民用晨昏蒙影(晚)</td><td>{r.twiE ? new Date(r.twiE).toUTCString().slice(17, 22) : '--'} UTC</td></tr>
+              <tr><td>民用晨昏(晚)</td><td>{r.twiE ? new Date(r.twiE).toUTCString().slice(17, 22) : '--'} UTC</td></tr>
               <tr><td>月亮</td><td>高度 {r.moonAlt.toFixed(0)}° · 照明 {(r.moonIllum * 100).toFixed(0)}% {r.waxing ? '盈' : '亏'}</td></tr>
+              <tr><td>夜空质量</td><td>B{s.bortle} · SQM {r.sqm.toFixed(1)} · 极限星等 {r.nelm.toFixed(1)}</td></tr>
+              <tr><td>银河</td><td>{r.mwText}</td></tr>
               <tr><td>地面照度(估)</td><td>{r.lux >= 1000 ? `${(r.lux / 1000).toFixed(0)}k` : r.lux.toFixed(2)} lx</td></tr>
               <tr><td>曝光建议</td><td>{r.delta > 1 ? `过曝 ${r.delta.toFixed(1)}st：收光圈/加 ND` : r.delta < -1 ? `欠曝 ${(-r.delta).toFixed(1)}st：开光圈/提 ISO/慢快门` : '平衡'}</td></tr>
-              <tr><td>所需 ND</td><td>{r.ndNeed.toFixed(1)} stops @f/{s.aperture}</td></tr>
+              {eclipses.map((e, i) => (
+                <tr key={i}>
+                  <td>{e.type === 'solar' ? '☀ 日食' : '🌕 月食'}</td>
+                  <td>
+                    {e.peak.toISOString().slice(0, 10)} {e.kind} · {e.localText}{' '}
+                    <button className="chip" onClick={() => onJump(e.peak)}>跳</button>
+                  </td>
+                </tr>
+              ))}
             </tbody>
           </table>
         </div>
         <div className="foot">
           依赖：CesiumJS (Apache-2.0) · astronomy-engine (MIT) · three.js 仅算法参考 (MIT)。
-          天气数据 <a href="https://open-meteo.com/" target="_blank" rel="noreferrer">Open-Meteo</a> (CC BY 4.0，仅调用公开 API)。
-          星表 Yale BSC（公有领域）。地图数据 © 其提供方，详见 licenses/ATTRIBUTIONS.md。
+          天气 <a href="https://open-meteo.com/" target="_blank" rel="noreferrer">Open-Meteo</a> (CC BY 4.0) / 7Timer! (公有领域)。
+          星表 Yale BSC（公有领域）· Bortle 表：公开天文共识数据。
+          地图数据 © 其提供方，详见 licenses/ATTRIBUTIONS.md。架构设计参考 PlanIt! Aurora（clean-room，见 docs/DESIGN_NOTES.md）。
         </div>
       </aside>
       <main className="stage">
         <div ref={hostRef} className="cesium" />
         <Viewfinder s={s} r={r} />
+        <Timeline sky={day} cursorMs={Date.parse(s.dateStr + 'Z')} eclipseMarks={eclipseMarks} onScrub={onScrub} onJump={onJump} />
         {!ready && <div className="loading">地球加载中…</div>}
       </main>
-      <SettingsModal open={showSettings} onClose={() => setShowSettings(false)} onSaved={onKeysSaved} />
+      <SettingsModal open={showSettings} onClose={() => setShowSettings(false)} onSaved={onKeysSaved} onScene={onSceneSaved} />
     </div>
   );
 }

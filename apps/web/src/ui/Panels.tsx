@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
-import { ND_FILTERS, SENSORS } from '@lsps/core';
-import { BASEMAPS, Basemap } from '../cesium/providers';
+import { BORTLE_TABLE, ND_FILTERS, SENSORS } from '@lsps/core';
+import { MAP_SOURCES } from '../cesium/providers';
+import { Basemap } from '../cesium/providers';
 import { Precip } from '../cesium/effects';
 import { ASPECTS, APERTURE_STOPS, FOCAL_PRESETS, sensorById } from '@lsps/core';
 
@@ -29,6 +30,7 @@ export interface Settings {
   precip: Precip;
   precipI: number;
   fog: number;
+  bortle: number;
 }
 
 export interface Readout {
@@ -53,6 +55,9 @@ export interface Readout {
   sunset: string;
   twiE: string;
   weatherText: string;
+  sqm: number;
+  nelm: number;
+  mwText: string;
 }
 
 interface Props {
@@ -102,8 +107,8 @@ export function Panels(p: Props) {
         </div>
         <div style={rowStyle}>
           <label className="lb">底图</label>
-          <select value={s.basemap} onChange={(e) => set({ basemap: e.target.value as Basemap })}>
-            {BASEMAPS.map((b) => (
+          <select value={s.basemap} onChange={(e) => set({ basemap: e.target.value })}>
+            {MAP_SOURCES.map((b) => (
               <option key={b.id} value={b.id} disabled={b.requires === 'ion' && !p.hasKeys.ion}>
                 {b.label}
                 {b.requires === 'ion' && !p.hasKeys.ion ? '（缺 ion token）' : b.requires === 'tdt' && !p.hasKeys.tdt ? '（缺天地图 key）' : ''}
@@ -239,6 +244,16 @@ export function Panels(p: Props) {
           <label className="cb"><input type="checkbox" checked={s.shadows} onChange={(e) => set({ shadows: e.target.checked })} />阴影</label>
           <label className="cb"><input type="checkbox" checked={s.sunPath} onChange={(e) => set({ sunPath: e.target.checked })} />太阳路径</label>
           <label className="cb"><input type="checkbox" checked={s.stars} onChange={(e) => set({ stars: e.target.checked })} />星空</label>
+        </div>
+        <div style={{ ...rowStyle, marginTop: 6 }}>
+          <label className="lb">Bortle 暗夜</label>
+          <select value={s.bortle} onChange={(e) => set({ bortle: +e.target.value })}>
+            {BORTLE_TABLE.map((b) => (
+              <option key={b.level} value={b.level}>
+                B{b.level} {b.name}
+              </option>
+            ))}
+          </select>
         </div>
       </Sec>
 

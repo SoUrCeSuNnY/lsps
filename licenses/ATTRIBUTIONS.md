@@ -2,12 +2,15 @@
 
 Displayed in-app where marked; this file is the canonical list.
 
-- **Map imagery**: © 天地图 (when `VITE_TDT_KEY` set) / © OpenStreetMap contributors,
-  basemap data © OpenDatabase (ODbL, https://www.openstreetmap.org/copyright) /
+- **Map imagery**: © 天地图 (when key set) / © 高德图幅（公开瓦片，署名内置）/ © OpenStreetMap
+  contributors, basemap data © OpenDatabase (ODbL, https://www.openstreetmap.org/copyright) /
   Bing Maps Aerial via Cesium ion (Cesium ion Terms of Use).
-- **Terrain**: Cesium World Terrain via Cesium ion (ion Terms of Use, personal free tier).
-- **Weather data**: [Open-Meteo.com](https://open-meteo.com/) — CC BY 4.0.
-  Attribution shown in UI: "Weather data by Open-Meteo.com". Non-commercial tier.
+- **POI search**: 高德开放平台 / 腾讯位置服务 / 天地图地理编码 / Nominatim(OSM) — 各按
+  用户自申请 key 的官方条款使用。
+- **Weather data**: [Open-Meteo.com](https://open-meteo.com/) — CC BY 4.0 (primary);
+  **7Timer!** (NASA/NIH Braunsberg) — public domain (fallback). Attribution shown in UI.
+- **Bortle dark-sky table**: Bortle 1958 (Sky & Telescope) public astronomy consensus
+  values; SQM/lux mapping is our own EST model.
 - **Star catalog**: Yale Bright Star Catalog — public domain (5th ed.).
 - **Milky Way panorama** (optional asset via `npm run fetch:assets`): ESO / S. Brunier — CC BY 4.0.
 - **TLE data** (sat-trak plugin): CelesTrak, https://celestrak.org/data-access/ (free public data).

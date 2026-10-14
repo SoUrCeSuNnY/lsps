@@ -20,7 +20,7 @@ ws.onmessage = (e) => {
 };
 await send('Runtime.enable');
 await send('Page.navigate', { url: 'http://localhost:5173/' });
-await new Promise((ok) => setTimeout(ok, 15000));
+await new Promise((ok) => setTimeout(ok, 35000));
 const probe = `(() => {
   const c = document.querySelector('canvas');
   const ces = window.__cesiumDebug || null;
