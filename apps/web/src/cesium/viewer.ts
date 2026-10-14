@@ -78,14 +78,11 @@ export function flyTo(viewer: Cesium.Viewer, lat: number, lon: number, alt = 120
   });
 }
 
-/** Ground position the camera looks at (falls back to camera's own longitude/latitude). */
+/** Ground position the camera looks at (near-side globe intersection). */
 export function cameraGround(viewer: Cesium.Viewer): Cesium.Cartographic | null {
   const ray = new Cesium.Ray(viewer.camera.positionWC, viewer.camera.directionWC);
-  const t = Cesium.IntersectionTests.rayEllipsoid(ray, Cesium.Ellipsoid.WGS84);
-  if (t) {
-    const pos = Cesium.Ray.getPoint(ray, t.start);
-    return Cesium.Cartographic.fromCartesian(pos);
-  }
+  const p = viewer.scene.globe.pick(ray, viewer.scene);
+  if (p) return Cesium.Cartographic.fromCartesian(p);
   const ell = viewer.camera.positionCartographic;
   return ell && Number.isFinite(ell.longitude) && ell.height < 3e7 ? ell : null;
 }

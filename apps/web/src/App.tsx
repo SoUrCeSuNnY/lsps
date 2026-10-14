@@ -93,6 +93,7 @@ export default function App() {
   useEffect(() => {
     let disposed = false;
     let tickId = 0;
+    if (viewerRef.current) return; // StrictMode double-mount guard: keep the first viewer
     (async () => {
       const v = await createViewer(hostRef.current!, {
         ionToken: ION,

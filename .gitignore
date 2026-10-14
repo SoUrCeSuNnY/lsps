@@ -6,3 +6,10 @@ coverage/
 *.log
 .DS_Store
 apps/web/public/assets/
+
+dev.log
+shot.log
+shot*.png
+scripts/cdp-*.mjs
+scripts/probe-deps.cjs
+shot.bat
