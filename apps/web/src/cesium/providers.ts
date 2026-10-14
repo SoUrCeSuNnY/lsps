@@ -118,7 +118,11 @@ export function makeLabelLayer(
 export async function makeTerrain(ionToken: string): Promise<Cesium.Terrain | undefined> {
   if (!ionToken) return undefined;
   Cesium.Ion.defaultAccessToken = ionToken;
-  return new Cesium.Terrain(
-    Cesium.CesiumTerrainProvider.fromIonAssetId(1, { requestVertexNormals: true }),
-  );
+  // ion endpoint can hang for 30s+ on CN networks — cap it, fall back to ellipsoid
+  const provider = Cesium.CesiumTerrainProvider.fromIonAssetId(1, {
+    requestVertexNormals: true,
+  }).catch(() => undefined);
+  const timeout = new Promise<undefined>((ok) => setTimeout(() => ok(undefined), 8000));
+  const p = await Promise.race([provider, timeout]);
+  return p ? new Cesium.Terrain(Promise.resolve(p)) : undefined;
 }

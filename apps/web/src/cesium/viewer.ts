@@ -9,8 +9,14 @@ export interface ViewerOpts {
 
 export async function createViewer(container: HTMLElement, o: ViewerOpts): Promise<Cesium.Viewer> {
   const base = await makeImagery(o.basemap, o);
-  const terrain = await makeTerrain(o.ionToken);
+  // terrain must never block first paint: race it, ellipsoid fallback
+  const terrainP = Promise.race([
+    makeTerrain(o.ionToken),
+    new Promise<undefined>((ok) => setTimeout(() => ok(undefined), 8000)),
+  ]);
+  const terrain = await terrainP;
   const viewer = new Cesium.Viewer(container, {
+    showRenderLoopErrors: false, // no "Rendering has stopped" modal
     baseLayer: Cesium.ImageryLayer.fromProviderAsync(Promise.resolve(base)),
     terrain,
     baseLayerPicker: false,
@@ -40,17 +46,31 @@ export async function createViewer(container: HTMLElement, o: ViewerOpts): Promi
     sm.softShadows = true; // PCSS: kills the frame-to-frame hard-edge shadow flicker during time-lapse
   }
   viewer.scene.screenSpaceCameraController.maximumZoomDistance = 4e7;
-  // One transient render error (observed: one frame while OSM buildings' first
-  // extrusion upload) must not show Cesium's modal or stop the loop: swallow the
-  // panel and keep rendering — CesiumWidget resumes on the next rAF.
-  const widget = viewer.cesiumWidget as unknown as { showErrorPanel(): void };
-  widget.showErrorPanel = () => {};
-  let renderErrors = 0;
-  scene.renderError.addEventListener(() => {
-    renderErrors++;
-    console.warn(`Cesium transient render error #${renderErrors} — auto-resuming`);
-    scene.requestRender();
-  });
+  // Cesium (current builds) catches render errors SILENTLY inside its rAF loop:
+  // the loop sets _useDefaultRenderLoop=false and the screen freezes black —
+  // there is NO public event on the widget. Wrap widget.render: catch, log,
+  // and restart the loop (rate-limited). One transient load-spike error must
+  // never mean a permanently black canvas.
+  const w = viewer.cesiumWidget as unknown as {
+    render: () => void;
+    useDefaultRenderLoop: boolean;
+    _useDefaultRenderLoop: boolean;
+  };
+  let loopRestarts = 0;
+  const origRender = w.render.bind(w);
+  w.render = () => {
+    try {
+      origRender();
+    } catch (e) {
+      console.warn('Cesium render error (canvas kept alive):', (e as Error)?.stack ?? e);
+      if (loopRestarts < 5) {
+        loopRestarts++;
+        w._useDefaultRenderLoop = false;
+        w.useDefaultRenderLoop = true; // startRenderLoop again
+        console.warn(`render loop restarted (#${loopRestarts})`);
+      }
+    }
+  };
   const label = makeLabelLayer(o.basemap, o.tdtKey);
   if (label) viewer.imageryLayers.addImageryProvider(label);
   (window as unknown as { __lsps: unknown }).__lsps = { Cesium, viewer };

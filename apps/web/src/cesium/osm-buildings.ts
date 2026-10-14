@@ -139,7 +139,8 @@ async function extrude(viewer: Cesium.Viewer, elements: OverpassElement[]): Prom
       /* keep flat bases */
     }
   }
-  els.forEach((el, idx) => {
+  viewer.dataSources.add(group);
+  const addOne = (el: OverpassElement, idx: number) => {
     const g = el.geometry!;
     const flat = cleanRing(g);
     if (!flat) return;
@@ -177,8 +178,21 @@ async function extrude(viewer: Cesium.Viewer, elements: OverpassElement[]): Prom
         },
       });
     }
-  });
-  viewer.dataSources.add(group);
+  };
+  // Stream in batches: one frame with 49 extruded textured polygons is a
+  // load spike that can produce a transient render error on first upload.
+  // rAF is throttled in unfocused windows — race with a 50ms timer.
+  const items = els.map((el, i) => ({ el, i }));
+  for (let s0 = 0; s0 < items.length; s0 += 10) {
+    items.slice(s0, s0 + 10).forEach(({ el, i }) => addOne(el, i));
+    await new Promise((ok) => {
+      const t = setTimeout(() => ok(null), 50);
+      requestAnimationFrame(() => {
+        clearTimeout(t);
+        ok(null);
+      });
+    });
+  }
   return {
     count: els.length,
     remove: () => {
