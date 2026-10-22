@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>LSPS · Cinematic Showcase</title>
+    <link rel="stylesheet" href="./src/cinematic.css" />
+  </head>
+  <body>
+    <div id="reel">
+      <canvas id="panel2d"></canvas>
+      <div id="stage3d"></div>
+      <div id="hud">
+        <div class="bar top"></div>
+        <div class="bar bottom"></div>
+        <div id="title-card">
+          <div class="tc-kicker">LSPS · LOCATION SCOUTING VIEWFINDER</div>
+          <div class="tc-main">选址即取景</div>
+          <div class="tc-sub">3D 地图 · 时间光照 · 天气 · 星空 · 电影级曝光</div>
+        </div>
+          <div id="meta">
+          <div class="m-row"><span class="m-k">TIME</span><span class="m-v" id="m-time">—</span></div>
+          <div class="m-row"><span class="m-k">SUN</span><span class="m-v" id="m-sun">—</span></div>
+          <div class="m-row"><span class="m-k">SKY</span><span class="m-v" id="m-sky">—</span></div>
+          <div class="m-row"><span class="m-k">WEATHER</span><span class="m-v" id="m-wx">—</span></div>
+        </div>
+        <div id="gauges">
+          <div class="g"><span class="g-k">FOCAL</span><span class="g-v" id="g-focal">—</span></div>
+          <div class="g"><span class="g-k">APERTURE</span><span class="g-v" id="g-ap">—</span></div>
+          <div class="g"><span class="g-k">ISO</span><span class="g-v" id="g-iso">—</span></div>
+          <div class="g"><span class="g-k">SHUTTER</span><span class="g-v" id="g-sh">—</span></div>
+          <div class="g"><span class="g-k">ND</span><span class="g-v" id="g-nd">—</span></div>
+          <div class="g"><span class="g-k">FOV</span><span class="g-v" id="g-fov">—</span></div>
+        </div>
+        <div id="ev-meter">
+          <div class="ev-label">EXPOSURE Δ</div>
+          <div class="ev-track"><div class="ev-zero"></div><div class="ev-fill" id="ev-fill"></div></div>
+          <div class="ev-val" id="ev-val">—</div>
+        </div>
+        <div id="scope"><canvas id="scope-c"></canvas><div class="scope-tag">EXPOSER</div></div>
+        <div id="reticle"><span></span><i></i></div>
+        <div id="rec"><b></b>REC</div>
+        <div id="scrub"><div id="scrub-fill"></div><div id="scrub-knob"></div></div>
+      </div>
+    </div>
+    <div id="boot">初始化 3D 引擎…</div>
+    <script type="module" src="./src/main.ts"></script>
+  </body>
+</html>

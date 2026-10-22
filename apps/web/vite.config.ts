@@ -40,12 +40,14 @@ function findCesiumBuild(): string {
   throw new Error('cesium Build not found');
 }
 
+const CESIUM_BUILD = findCesiumBuild();
+
 function serveCesium(): Plugin {
   return {
     name: 'lsps-serve-cesium',
     apply: 'serve',
     configureServer(server) {
-      const root = findCesiumBuild();
+      const root = CESIUM_BUILD;
       server.middlewares.use('/cesium', (req, res) => {
         const clean = decodeURIComponent((req.url ?? '/').split('?')[0]);
         const file = path.normalize(path.join(root, clean));
@@ -70,13 +72,13 @@ export default defineConfig({
     serveCesium(),
     react(),
     viteStaticCopy({
-      targets: [
-        { src: 'node_modules/cesium/Build/Cesium/Workers', dest: 'cesium' },
-        { src: 'node_modules/cesium/Build/Cesium/ThirdParty', dest: 'cesium' },
-        { src: 'node_modules/cesium/Build/Cesium/Assets', dest: 'cesium' },
-        { src: 'node_modules/cesium/Build/Cesium/Widgets', dest: 'cesium' },
-      ],
-      silent: true,
+      targets: ['Workers', 'ThirdParty', 'Assets', 'Widgets'].map((d) => ({
+        // Absolute, forward-slashed: `src` globs relative to vite root (apps/web)
+        // and Cesium is hoisted to the repo root, so the old relative path
+        // matched nothing and dist shipped with no Cesium statics at all.
+        src: CESIUM_BUILD.replace(/\\/g, '/') + '/' + d,
+        dest: 'cesium',
+      })),
     }),
   ],
   optimizeDeps: {

@@ -6,13 +6,16 @@
   "license": "MIT",
   "workspaces": [
     "packages/*",
-    "apps/*"
+    "apps/*",
+    "showcase"
   ],
   "scripts": {
     "dev": "npm run dev -w @lsps/web",
     "build": "npm run build -w @lsps/core && npm run build -w @lsps/web",
     "test": "npm run test -w @lsps/core",
     "check:licenses": "node scripts/check-licenses.mjs",
+    "build:showcase": "npm run build -w @lsps/core && npm run build -w @lsps/showcase",
+    "capture:showcase": "node showcase/capture.mjs",
     "fetch:assets": "node scripts/fetch-assets.mjs",
     "fetch:hongyadong": "node scripts/fetch-hongyadong.mjs"
   },

@@ -65,11 +65,17 @@ void main() {
 const FOG_FRAG = `
 uniform sampler2D colorTexture;
 uniform float density;
+uniform float night;
 in vec2 v_textureCoordinates;
 void main() {
   vec4 color = texture(colorTexture, v_textureCoordinates);
   float lum = dot(color.rgb, vec3(0.299, 0.587, 0.114));
-  vec3 fogCol = mix(vec3(0.62, 0.66, 0.72), vec3(0.9, 0.92, 0.95), lum);
+  // Fog scatters the ambient sky, so its colour has to follow it. A fixed
+  // near-white veil turns a blue-hour scene back into overcast daylight and
+  // swallows the subject.
+  vec3 dayCol = mix(vec3(0.62, 0.66, 0.72), vec3(0.9, 0.92, 0.95), lum);
+  vec3 nightCol = mix(vec3(0.05, 0.07, 0.12), vec3(0.14, 0.17, 0.25), lum);
+  vec3 fogCol = mix(dayCol, nightCol, clamp(night, 0.0, 1.0));
   float veil = clamp(density, 0.0, 1.0) * (0.75 - 0.25 * smoothstep(0.2, 0.9, v_textureCoordinates.y));
   color.rgb = mix(color.rgb, fogCol, veil * 0.7);
   out_FragColor = color;
@@ -88,6 +94,22 @@ type StageOpts = NonNullable<ConstructorParameters<typeof Cesium.PostProcessStag
 
 const stage = (s: Cesium.Scene, o: StageOpts): Cesium.PostProcessStage =>
   s.postProcessStages.add(new Cesium.PostProcessStage(o)) as Cesium.PostProcessStage;
+
+/** How far into the night the camera's ground point is, from Cesium's sun vector. */
+const upScratch = new Cesium.Cartesian3();
+function sunNight(scene: Cesium.Scene): number {
+  const ctx = (scene as unknown as { context?: { uniformState?: { sunPositionWC?: Cesium.Cartesian3 } } }).context;
+  const sun = ctx?.uniformState?.sunPositionWC;
+  const cart = scene.camera.positionCartographic;
+  if (!sun || !cart) return 0;
+  const cosLat = Math.cos(cart.latitude);
+  upScratch.x = cosLat * Math.cos(cart.longitude);
+  upScratch.y = cosLat * Math.sin(cart.longitude);
+  upScratch.z = Math.sin(cart.latitude);
+  const sinAlt = Cesium.Cartesian3.dot(sun, upScratch) / Cesium.Cartesian3.magnitude(sun);
+  const altDeg = Cesium.Math.toDegrees(Math.asin(Cesium.Math.clamp(sinAlt, -1, 1)));
+  return Cesium.Math.clamp((-altDeg - 3) / 5, 0, 1);
+}
 
 export class Effects {
   private u: State = { exposure: 1, rain: 0, snow: 0, fog: 0 };
@@ -110,7 +132,7 @@ export class Effects {
       }),
       fog: stage(s, {
         fragmentShader: FOG_FRAG,
-        uniforms: { density: () => this.u.fog },
+        uniforms: { density: () => this.u.fog, night: () => sunNight(viewer.scene) },
       }),
     };
     this.stages.rain.enabled = false;

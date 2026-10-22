@@ -6,6 +6,17 @@ Web 版 **3D 选址/取景软件**：联网高精度 3D 地图上模拟任意时
 > 对标 CineTracer / SCOUT 一类取景器工具的开源实现。仓库本身 MIT；
 > GPL/AGPL 组件全部以进程边界/公开 API 隔离，CI 有许可证白名单闸门。
 
+## 演示
+
+![LSPS 3D 取景器演示](showcase/media/lsps-showcase-preview.gif)
+
+7 个世界地标 × 7 种天气 × 从黄金时刻到深夜。**画面里每个数字都是真的**：太阳高度/方位来自
+astronomy-engine，照度与 Bortle/SQM 来自 `@lsps/core` 曝光模型，焦段直接驱动 Cesium 相机视场角，
+曝光 Δ 驱动画面亮度 —— 演示片由本仓库自己的引擎逐帧渲染，不是外部剪辑的动画。
+
+完整 1600×900 / 24fps / 47.6 s（1142 帧逐帧渲染）：[showcase/media/lsps-showcase.mp4](showcase/media/lsps-showcase.mp4)
+· 分镜表与重生成方法见 [showcase/README.md](showcase/README.md)
+
 ## 功能现状
 
 - 🏮 **默认场景：重庆洪崖洞** — 打开即是"全网最火蓝调时刻机位"（千厮门大桥侧取景位）：
@@ -160,6 +171,7 @@ CI 每次构建跑 `scripts/check-licenses.mjs`：生产依赖树出现 GPL/AGPL
 ```
 apps/web          Cesium+React 应用（取景 UI、后处理、星空、太阳路径）
 packages/core     镜头/曝光/照度纯数学（vitest 单测）
+showcase/         演示片生成器（隔离 workspace，复用上述引擎逐帧渲染）
 plugins/sat-trak  GPL 卫星插件（隔离，见其 README）
 licenses/         THIRD_PARTY_NOTICES / ATTRIBUTIONS
 scripts/          许可证闸门、CC 素材下载

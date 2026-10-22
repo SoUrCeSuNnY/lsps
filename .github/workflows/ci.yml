@@ -16,5 +16,14 @@ jobs:
       - run: npm ci
       - run: npm test
       - run: npm run build
+      - name: Assert Cesium statics shipped in the production bundle
+        # viteStaticCopy copies nothing and stays silent when its `src` glob
+        # misses, which yields a green build and a globe-less site. Assert it landed.
+        run: |
+          for d in Workers Assets Widgets ThirdParty; do
+            test -n "$(ls -A apps/web/dist/cesium/$d 2>/dev/null)" \
+              || { echo "MISSING apps/web/dist/cesium/$d"; exit 1; }
+          done
+          echo "cesium statics OK"
       - name: License gate (MIT/Apache/BSD/Zlib/ISC/CC0 whitelist, GPL family hard-block)
         run: npm run check:licenses

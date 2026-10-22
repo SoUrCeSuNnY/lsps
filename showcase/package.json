@@ -1,0 +1,22 @@
+{
+  "name": "@lsps/showcase",
+  "version": "0.1.0",
+  "license": "MIT",
+  "private": true,
+  "type": "module",
+  "description": "Isolated cinematic demo: landmark x weather x time-of-day with real lens/exposure math, plus deterministic frame-by-frame video export",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "capture": "node capture.mjs"
+  },
+  "dependencies": {
+    "@lsps/core": "*",
+    "cesium": "^1.132.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.3",
+    "vite": "^7.1.0"
+  }
+}

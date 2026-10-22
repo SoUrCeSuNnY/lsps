@@ -19,3 +19,14 @@ settings.png
 watchdog.log
 
 qa.png
+
+# showcase: keep the rendered deliverables (showcase/media), drop the scratch
+showcase/build/frames/
+showcase/build/pal.png
+showcase/build/capture.log
+showcase/build/still-*
+showcase/build/tiles/
+showcase/build/dl-*
+showcase/build/probe-*
+.showcase-profile*/
+.probe*/
