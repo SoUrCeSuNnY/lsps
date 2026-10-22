@@ -8,6 +8,16 @@ export interface DaySky {
   events: { t: number; label: string }[];
 }
 
+/**
+ * The datetime-local input holds a naive string treated as UTC. Clearing the
+ * field yields '' -> Invalid Date, which poisons every downstream JulianDate,
+ * so callers must handle null instead of propagating NaN through the clock.
+ */
+export function parseUtc(dateStr: string): Date | null {
+  const d = new Date(`${dateStr}Z`);
+  return Number.isNaN(d.getTime()) ? null : d;
+}
+
 /** 24h illuminance/sun-altitude curve (96 samples) + event markers for a UTC day. */
 export function daySky(dayStartMs: number, lat: number, lon: number, cloudPct: number, bortle: number): DaySky {
   const obs = new Astro.Observer(lat, lon, 0);

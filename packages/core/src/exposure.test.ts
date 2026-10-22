@@ -39,6 +39,15 @@ describe('exposure', () => {
     close(exposureFactor(2), 4, 1e-9, 'factor');
   });
 
+  it('ISO is sensor speed, not a second exposure dial: ISO 800 must not double-count', () => {
+    const t = shutterSecondsForFps(24, 180);
+    for (const iso of [100, 400, 800, 6400]) {
+      const need = ndStopsNeeded(110000, t, iso, 2.8);
+      close(exposureDeltaStops(110000, t, iso, 2.8, need), 0, 1e-9, `nd cancels delta at ISO ${iso}`);
+      close(exposureDeltaStops(110000, t, iso, 2.8, 0), need, 1e-9, `bare delta equals ND need at ISO ${iso}`);
+    }
+  });
+
   it('night is heavily under at day settings', () => {
     assert.ok(exposureDeltaStops(0.25, 1 / 48, 800, 2.8, 0) < -5);
   });

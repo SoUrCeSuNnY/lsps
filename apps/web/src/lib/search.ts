@@ -72,8 +72,10 @@ export async function searchPlaces(
   jobs.push(
     (async () => {
       try {
+        // Users paste the base URL with a trailing slash in settings.
+        const base = keys.nominatimUrl.replace(/\/+$/, '');
         const r = await fetch(
-          `${keys.nominatimUrl}/search?format=jsonv2&limit=5&accept-language=zh-CN&q=${encodeURIComponent(q)}`,
+          `${base}/search?format=jsonv2&limit=5&accept-language=zh-CN&q=${encodeURIComponent(q)}`,
           { headers: { Accept: 'application/json' } },
         );
         const arr = (await r.json()) as { display_name: string; lat: string; lon: string }[];

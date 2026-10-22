@@ -37,7 +37,7 @@ export function exposureDeltaStops(
   ndStops: number,
 ): number {
   const evs = ev100FromIlluminance(lux) + Math.log2(iso / 100);
-  return evs - (evCamera(aperture, shutterSeconds, iso) + ndStops);
+  return evs - (evCamera(aperture, shutterSeconds, 100) + ndStops);
 }
 
 /** Map exposure delta (stops) to a bounded display/exposure factor for tone mapping. */

@@ -1,8 +1,10 @@
+import { useRef } from 'react';
 import type { ReactNode } from 'react';
 import { BORTLE_TABLE, ND_FILTERS, SENSORS } from '@lsps/core';
 import { MAP_SOURCES } from '../cesium/providers';
 import { Basemap } from '../cesium/providers';
 import { Precip } from '../cesium/effects';
+import { parseUtc } from '../lib/astro';
 import { ASPECTS, APERTURE_STOPS, FOCAL_PRESETS, sensorById } from '@lsps/core';
 
 export interface Settings {
@@ -87,6 +89,18 @@ const rowStyle = { display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wra
 export function Panels(p: Props) {
   const { s, set } = p;
   const isoList = [100, 200, 400, 800, 1600, 3200, 6400];
+  // Clearing the datetime field yields '' (Invalid Date), which poisons the
+  // clock, timeline and eclipse search and unmounts the app — restore the last
+  // accepted value so s.dateStr is always parseable.
+  const lastDate = useRef(s.dateStr);
+  const setDate = (v: string) => {
+    if (!parseUtc(v)) {
+      set({ dateStr: lastDate.current });
+      return;
+    }
+    lastDate.current = v;
+    set({ dateStr: v });
+  };
   return (
     <div className="panels">
       <Sec title="选址">
@@ -109,7 +123,11 @@ export function Panels(p: Props) {
           <label className="lb">底图</label>
           <select value={s.basemap} onChange={(e) => set({ basemap: e.target.value })}>
             {MAP_SOURCES.map((b) => (
-              <option key={b.id} value={b.id} disabled={b.requires === 'ion' && !p.hasKeys.ion}>
+              <option
+                key={b.id}
+                value={b.id}
+                disabled={(b.requires === 'ion' && !p.hasKeys.ion) || (b.requires === 'tdt' && !p.hasKeys.tdt)}
+              >
                 {b.label}
                 {b.requires === 'ion' && !p.hasKeys.ion ? '（缺 ion token）' : b.requires === 'tdt' && !p.hasKeys.tdt ? '（缺天地图 key）' : ''}
               </option>
@@ -119,7 +137,7 @@ export function Panels(p: Props) {
       </Sec>
 
       <Sec title="时间（UTC）">
-        <input type="datetime-local" step={60} value={s.dateStr} onChange={(e) => set({ dateStr: e.target.value })} style={{ width: '100%' }} />
+        <input type="datetime-local" step={60} value={s.dateStr} onChange={(e) => setDate(e.target.value)} style={{ width: '100%' }} />
         <div style={{ ...rowStyle, marginTop: 6 }}>
           <button className={s.playing ? 'on' : ''} onClick={() => set({ playing: !s.playing })}>
             {s.playing ? '⏸ 暂停' : '▶ 播放'}
@@ -133,7 +151,7 @@ export function Panels(p: Props) {
           </select>
         </div>
         <div style={{ ...rowStyle, marginTop: 6 }}>
-          <button onClick={() => p.sky.sunrise && p.onJump(new Date(new Date(s.dateStr + 'Z').setUTCDate(new Date(s.dateStr + 'Z').getUTCDate() + 1)))}>
+          <button onClick={() => p.onJump(new Date(new Date(s.dateStr + 'Z').setUTCDate(new Date(s.dateStr + 'Z').getUTCDate() + 1)))}>
             次日
           </button>
           <button onClick={() => p.sky.sunrise && p.onJump(p.sky.sunrise)}>日出</button>

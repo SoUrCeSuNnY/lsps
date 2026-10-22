@@ -39,6 +39,10 @@ const HYD_VIEW = { lon: 106.5789, lat: 29.5643, alt: 230, heading: 148, pitch: -
 function pad(n: number): string {
   return String(n).padStart(2, '0');
 }
+/** Cesium reports roll in [0, 2pi), so a level camera reads 360°; fold to ±180. */
+function normDeg(deg: number): number {
+  return ((deg + 180) % 360 + 360) % 360 - 180;
+}
 function toInputValue(d: Date): string {
   return `${d.getUTCFullYear()}-${pad(d.getUTCMonth() + 1)}-${pad(d.getUTCDate())}T${pad(d.getUTCHours())}:${pad(d.getUTCMinutes())}`;
 }
@@ -193,8 +197,8 @@ export default function App() {
         });
         readoutRef.current = {
           lat, lon,
-          heading: (360 - Cesium.Math.toDegrees(v.camera.heading)) % 360,
-          roll: Cesium.Math.toDegrees(v.camera.roll),
+          heading: Cesium.Math.toDegrees(v.camera.heading),
+          roll: normDeg(Cesium.Math.toDegrees(v.camera.roll)),
           sunAlt: sky.sunAlt, sunAz: sky.sunAz,
           moonAlt: sky.moonAlt, moonAz: sky.moonAz,
           moonIllum: sky.moonIllum, waxing: sky.waxing,

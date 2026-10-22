@@ -13,7 +13,7 @@ function sunDirIcrf(date: Date): Cesium.Cartesian3 | null {
   const v = Astro.GeoVector(Astro.Body.Sun, date, true);
   const pos = new Cesium.Cartesian3(v.x * AU, v.y * AU, v.z * AU);
   const out = new Cesium.Cartesian3();
-  Cesium.Matrix4.multiplyByPoint(m, pos, out);
+  Cesium.Matrix3.multiplyByVector(m, pos, out);
   return out;
 }
 
