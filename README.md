@@ -35,6 +35,11 @@ Web 版 **3D 选址/取景软件**：联网高精度 3D 地图上模拟任意时
 
 ## 快速开始
 
+**Windows 一键启动**：双击 `一键启动.bat`（自动检查 Node → 装依赖 → 生成 `.env.local`
+→ 起服务并打开浏览器）。国内网络慢用 `一键启动.bat -mirror`，要先拉最新版用 `-update`。
+
+手动方式：
+
 ```bash
 npm install                 # 建议国内: npm i --registry=https://registry.npmmirror.com
 cp .env.example apps/web/.env.local   # 填 key（可全空，自动降级 OSM 底图）

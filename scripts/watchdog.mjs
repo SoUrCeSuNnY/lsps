@@ -1,7 +1,8 @@
 // Watchdog: keeps `npm run dev` alive on :5173. Run detached; auto-restarts vite.
 import { execSync, spawn } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
 
-const ROOT = 'C:\\Users\\Administrator\\Desktop\\lsps';
+const ROOT = fileURLToPath(new URL('..', import.meta.url));
 const PORT = 5173;
 
 const alive = () => {
