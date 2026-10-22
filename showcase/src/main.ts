@@ -170,7 +170,9 @@ async function makeBasemap(): Promise<Cesium.ImageryProvider> {
     if (probe.ok) {
       return new Cesium.UrlTemplateImageryProvider({
         url: '/tiles/{z}/{x}/{y}.jpg',
-        maximumLevel: 16,
+        // 15, not 16: see the maximumScreenSpaceError note below. The panel is
+        // ~580 px wide, and z16 imagery is already finer than it can resolve.
+        maximumLevel: 15,
         credit: new Cesium.Credit('© Esri, Maxar, Earthstar Geographics · © OpenStreetMap contributors'),
       });
     }
@@ -203,6 +205,13 @@ async function boot3d(): Promise<void> {
   // so the globe stays ellipsoidal — that is what the earth shots frame anyway.
   const s = viewer.scene;
   s.globe.enableLighting = true;
+  // A ground-level camera 84 m up, viewed through a 580 px window, still makes
+  // Cesium's default 2.0 screen-space error demand z17-z18 tiles — and it renders
+  // them *before* their imagery arrives, so the panel paints an empty, untextured
+  // surface (measured: 64 tiles at z17/z18 with imgs=0). Loosening the error to
+  // 4.0 keeps the surface one zoom level behind, which is below what a 36% inset
+  // can resolve anyway.
+  s.globe.maximumScreenSpaceError = 4;
   s.globe.baseColor = Cesium.Color.fromCssColorString('#070d18');
   s.highDynamicRange = true;
   s.fog.enabled = true;
@@ -280,6 +289,26 @@ async function boot3d(): Promise<void> {
       }
       return {
         toRender: g._surface?._tilesToRender?.length ?? 0,
+        tilesLoaded: g.tilesLoaded,
+        // Per-tile imagery state histogram. `detail` alone can plateau while
+        // tiles are still in flight (a night city has little texture to gain),
+        // so the driver needs Cesium's own bookkeeping as the second signal.
+        imgStates: (() => {
+          const acc: Record<string, number> = {};
+          for (const raw of g._surface?._tilesToRender ?? []) {
+            const ti = raw as { imagery?: { _state?: number }[] };
+            const list = ti.imagery ?? [];
+            if (!list.length) {
+              acc['none'] = (acc['none'] ?? 0) + 1;
+              continue;
+            }
+            for (const im of list) {
+              const k = String(im?._state);
+              acc[k] = (acc[k] ?? 0) + 1;
+            }
+          }
+          return acc;
+        })(),
         bright: Math.round(mean * 10) / 10,
         detail: Math.round(Math.sqrt(varSum / n) * 10) / 10,
       };
@@ -324,12 +353,18 @@ function resize(): void {
  * term lifts it back a little: a bright moon over snow really does light a
  * city. This runs after `setCloud` and folds its dimming in, because both
  * write the same property.
+ *
+ * The floor is 0.3, not 0.1: a keyless build has no city-lights layer (that is
+ * an ion asset), so a literal satellite night is *literally* black — the panel
+ * reads as an empty frame and the subject, which is the whole point of the
+ * inset, disappears. A real long exposure lifts the shadows the same way; the
+ * HUD still reports the true exposure delta.
  */
 function setNightGrade(night: number, moonUp: number, cloudPct: number): void {
   const lay = viewer.imageryLayers.get(0);
   if (!lay) return;
   const lift = 1 + 0.55 * moonUp;
-  const k = (1 - night) + night * 0.1 * lift;
+  const k = (1 - night) + night * 0.3 * lift;
   lay.brightness = k * (1 - 0.3 * Math.min(1, Math.max(0, cloudPct / 100)));
   lay.saturation = 1 - 0.45 * night;
 }

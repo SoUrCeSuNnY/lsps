@@ -164,17 +164,19 @@ export const MASSES: Record<string, (seed: number) => Mass[]> = {
    */
   london: (seed) => [
     ...blocks(seed, 24, 480, 900, 80),
-    // the Palace of Westminster, with the clock tower on its north end
-    { x: 0, z: 30, w: 150, d: 96, base: 0, h: 30 },
-    { x: 0, z: -40, w: 34, d: 34, base: 30, h: 86 },
-    { x: 0, z: -40, w: 22, d: 22, base: 86, h: 96, pyramid: true },
-    // Victoria Tower at the south-west corner, 110 m along the river front
-    { x: -110, z: 40, w: 60, d: 60, base: 0, h: 98 },
+    // The Palace of Westminster is ~300 m x 35 m along the river front. Modelled
+    // as a squat 150 x 96 block it reads as a wall filling the panel from a
+    // 300 m camera; as a long bar it reads as a building.
+    { x: 0, z: 40, w: 55, d: 300, base: 0, h: 30 },
+    { x: 0, z: -95, w: 34, d: 34, base: 30, h: 86 },
+    { x: 0, z: -95, w: 22, d: 22, base: 86, h: 96, pyramid: true },
+    // Victoria Tower at the south end of the river front, 98 m
+    { x: 10, z: 150, w: 60, d: 60, base: 0, h: 98 },
     // the Eye on the south bank, offset east so it clears the camera's sight
-    // line to the clock tower (the camera stands ~300 m SSW of the anchor)
-    { x: 170, z: -150, w: 120, d: 120, base: 8, h: 128, disc: true, backdrop: true },
+    // line to the clock tower (the camera stands ~520 m SSW of the anchor)
+    { x: 200, z: -170, w: 120, d: 120, base: 8, h: 128, disc: true, backdrop: true },
     // Westminster Bridge runs north-south across the tideway
-    { x: 40, z: -80, w: 19, d: 290, base: 5, h: 8, backdrop: true },
+    { x: 70, z: -80, w: 19, d: 290, base: 5, h: 8, backdrop: true },
   ],
 };
 

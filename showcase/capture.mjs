@@ -307,7 +307,7 @@ function frameOfShotMid(id) {
  * there is nothing to warm: running the loop there burns seconds per shot and
  * the surface counter never moves.
  */
-async function warm(cdp, shot, frame, budgetMs = 90000, verbose = true) {
+async function warm(cdp, shot, frame, budgetMs = 120000, verbose = true) {
   if (shot.kind === 'card') {
     if (verbose) process.stdout.write(`[card ${shot.id}] `);
     return { ms: 0, settled: true, toRender: 0, bright: 0, detail: 0 };
@@ -316,23 +316,28 @@ async function warm(cdp, shot, frame, budgetMs = 90000, verbose = true) {
   // skipPaint keeps the loop cheap: Cesium's traversal (which is what issues
   // the imagery requests) still runs, the 2D overlay + canvas readback does not.
   await cdp.ev(`window.__show.__raf(${frame}, { skipPaint: true })`);
+  let last = { toRender: 0, bright: 0, detail: 0, tilesLoaded: false };
   const hist = [];
-  let last = { toRender: 0, bright: 0, detail: 0 };
+  let loaded = 0;
   let settled = false;
   while (Date.now() - t0 < budgetMs) {
     await sleep(350);
     last = JSON.parse(String(await cdp.ev('JSON.stringify(window.__show.__globe())')));
+    // Two signals, either of which ends the warm.
+    //
+    // `globe.tilesLoaded` is Cesium's own bookkeeping — true only when every
+    // visible tile has imagery attached — and is the strongest answer. But a
+    // ground-level camera keeps refining, so on some shots it never reports
+    // true, and trusting it alone burns the whole budget (measured: Sydney and
+    // Chongqing stalled at 120 s each). So also accept a plateau in the canvas
+    // standard deviation: detail stops climbing once imagery stops arriving.
+    loaded = last.tilesLoaded ? loaded + 1 : 0;
     hist.push(last.detail);
-    if (hist.length < 7) continue;
     const w = hist.slice(-4);
-    const peak = Math.max(...w);
+    const peak = w.length >= 4 ? Math.max(...w) : 0;
     const spread = (peak - Math.min(...w)) / Math.max(1e-3, peak);
-    // Settled = detail stopped climbing. The absolute floor is low on purpose:
-    // a blue-hour shot behind rain has almost no high-frequency content, so a
-    // threshold tuned on the noon shots would never let it finish. Detail above
-    // ~18 means the imagery is loaded at the zoom the inset actually needs (the
-    // panel is only ~580px wide), so tolerate a noisier plateau there.
-    if (peak >= 18 ? spread < 0.12 : peak >= 2 && spread < 0.05) {
+    const plateau = peak >= 2 && (peak >= 18 ? spread < 0.12 : spread < 0.05);
+    if (last.detail >= 2 && (loaded >= 2 || plateau)) {
       settled = true;
       break;
     }

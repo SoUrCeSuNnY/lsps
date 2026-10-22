@@ -198,7 +198,7 @@ export const SHOTS: Shot[] = [
     id: 'hk-blue-rain',
     city: '重庆 · 29.56N 106.57E',
     landmark: '洪崖洞 蓝调时刻',
-    cam: { lat: 29.5643, lon: 106.5789, height: 88, dist: 380, elev: 6, heading: 40 },
+    cam: { lat: 29.5643, lon: 106.5789, height: 88, dist: 560, elev: 8, heading: 40 },
     time: '2026-10-22T10:32:00Z',
     timeSpanH: 0.16,
     weather: RAIN,
@@ -226,7 +226,7 @@ export const SHOTS: Shot[] = [
     id: 'london-storm',
     city: 'LONDON · 51.50N 0.12W',
     landmark: 'Westminster · Big Ben 96 m',
-    cam: { lat: 51.5045, lon: -0.0865, height: 96, dist: 300, elev: 7, heading: 12 },
+    cam: { lat: 51.5045, lon: -0.0865, height: 96, dist: 520, elev: 7, heading: 12 },
     time: '2026-10-22T15:10:00Z',
     timeSpanH: 0.9,
     weather: STORM,
@@ -240,7 +240,14 @@ export const SHOTS: Shot[] = [
 ];
 
 export const TOTAL_SECONDS = SHOTS.reduce((a, s) => a + s.seconds, 0);
-export const TOTAL_FRAMES = Math.round(TOTAL_SECONDS * FPS);
+/**
+ * Sum of the per-shot frame counts, not `round(TOTAL_SECONDS * FPS)`. The
+ * capture driver and `frameToState` both walk the shot list and round each
+ * shot, so rounding the total as well gives a number they disagree with
+ * (47.6 s rounds to 1142, the shots sum to 1143) and the progress bar runs a
+ * frame out of step with the reel.
+ */
+export const TOTAL_FRAMES = SHOTS.reduce((a, s) => a + Math.round(s.seconds * FPS), 0);
 
 export interface FrameState {
   shot: Shot;

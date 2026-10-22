@@ -14,7 +14,7 @@ Web 版 **3D 选址/取景软件**：联网高精度 3D 地图上模拟任意时
 astronomy-engine，照度与 Bortle/SQM 来自 `@lsps/core` 曝光模型，焦段直接驱动 Cesium 相机视场角，
 曝光 Δ 驱动画面亮度 —— 演示片由本仓库自己的引擎逐帧渲染，不是外部剪辑的动画。
 
-完整 1600×900 / 24fps / 47.6 s（1142 帧逐帧渲染）：[showcase/media/lsps-showcase.mp4](showcase/media/lsps-showcase.mp4)
+完整 1600×900 / 24fps / 47.6 s（1143 帧逐帧渲染）：[showcase/media/lsps-showcase.mp4](showcase/media/lsps-showcase.mp4)
 · 分镜表与重生成方法见 [showcase/README.md](showcase/README.md)
 
 ## 功能现状
