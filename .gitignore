@@ -28,5 +28,6 @@ showcase/build/still-*
 showcase/build/tiles/
 showcase/build/dl-*
 showcase/build/probe-*
+.qa-profile*/
 .showcase-profile*/
 .probe*/
