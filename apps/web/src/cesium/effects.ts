@@ -108,7 +108,11 @@ function sunNight(scene: Cesium.Scene): number {
   upScratch.z = Math.sin(cart.latitude);
   const sinAlt = Cesium.Cartesian3.dot(sun, upScratch) / Cesium.Cartesian3.magnitude(sun);
   const altDeg = Cesium.Math.toDegrees(Math.asin(Cesium.Math.clamp(sinAlt, -1, 1)));
-  return Cesium.Math.clamp((-altDeg - 3) / 5, 0, 1);
+  const night = Cesium.Math.clamp((-altDeg - 3) / 5, 0, 1);
+  // The camera's cartographic position is NaN inside the ellipsoid, and a NaN
+  // uniform makes Cesium's own uniform setter throw — which its render loop
+  // swallows silently, killing the view. Fall back to day colours.
+  return Number.isFinite(night) ? night : 0;
 }
 
 export class Effects {
